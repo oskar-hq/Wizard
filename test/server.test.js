@@ -83,9 +83,9 @@ class Client {
 }
 
 /** Startet einen Server und liefert URL + Aufräumfunktion. */
-async function startServer() {
+async function startServer(hubOptions = {}) {
   const { server, close, store } = createServer({
-    hub: { trickDisplayMs: 30, roundEndMs: 60000 },
+    hub: { trickDisplayMs: 30, roundEndMs: 60000, botDelayMs: 5, ...hubOptions },
   });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   const { port } = server.address();
@@ -543,6 +543,188 @@ test('Variante „Plus/minus Eins“ über WebSockets: der Geber muss ausweichen
     fresh: true,
   });
   assert.equal(clients[0].state.bidsTotal, 0);
+
+  for (const client of clients) client.close();
+});
+
+test('Rundenzahl per Schieber: nur der Host, wirkt in der Partie', async (t) => {
+  const { url, close } = await startServer();
+  t.after(close);
+
+  const { clients } = await makeRoom(url, ['Anna', 'Ben', 'Cem']);
+  const [anna, ben] = clients;
+
+  const lobby = anna.last('room_state').room;
+  assert.equal(lobby.maxRounds, 20);
+  assert.equal(lobby.roundsTotal, 20, 'Standard ist das volle Spiel');
+
+  ben.send({ type: 'set_rounds', rounds: 5 });
+  assert.equal((await ben.waitFor('error')).code, 'not_host');
+
+  anna.send({ type: 'set_rounds', rounds: 5 });
+  const short = (
+    await ben.waitFor((m) => m.type === 'room_state' && m.room.roundsTotal === 5, { fresh: true })
+  ).room;
+  assert.equal(short.roundsTotal, 5);
+
+  // Unsinnig hohe Werte werden gekappt.
+  anna.send({ type: 'set_rounds', rounds: 999 });
+  await anna.waitFor((m) => m.type === 'room_state' && m.room.roundsTotal === 20, { fresh: true });
+
+  anna.send({ type: 'set_rounds', rounds: 3 });
+  await anna.waitFor((m) => m.type === 'room_state' && m.room.roundsTotal === 3, { fresh: true });
+  anna.send({ type: 'start_game' });
+  const state = (await anna.waitFor((m) => m.type === 'game_state' && m.state.round === 1)).state;
+  assert.equal(state.roundsTotal, 3);
+  assert.equal(state.maxRounds, 20);
+
+  for (const client of clients) client.close();
+});
+
+test('Bots: der Host setzt sie dazu und sie spielen selbst', async (t) => {
+  const { url, close } = await startServer({ botDelayMs: 10 });
+  t.after(close);
+
+  const anna = await Client.connect(url, 'Anna');
+  anna.send({ type: 'create_room', name: 'Anna' });
+  anna.session = await anna.waitFor('joined');
+
+  // Alleine kann nicht gestartet werden.
+  anna.send({ type: 'start_game' });
+  assert.equal((await anna.waitFor('error')).code, 'not_enough_players');
+
+  anna.send({ type: 'add_bot' });
+  anna.send({ type: 'add_bot' });
+  const lobby = (
+    await anna.waitFor((m) => m.type === 'room_state' && m.room.players.length === 3, {
+      fresh: true,
+    })
+  ).room;
+  assert.equal(lobby.botCount, 2);
+  assert.equal(lobby.players.filter((p) => p.isBot).length, 2);
+  assert.ok(lobby.players.every((p) => p.connected));
+  assert.equal(lobby.players.find((p) => p.isBot).isHost, false);
+
+  // Kurzes Spiel, damit der Test flott bleibt.
+  anna.send({ type: 'set_rounds', rounds: 2 });
+  await anna.waitFor((m) => m.type === 'room_state' && m.room.roundsTotal === 2, { fresh: true });
+  anna.send({ type: 'start_game' });
+  await anna.waitFor('game_state');
+
+  // Die Bots erledigen Trumpfwahl und Ansagen von allein; Anna spielt mit.
+  const finished = anna.waitFor('game_over', { timeout: 20000 });
+  for (let step = 0; step < 400; step++) {
+    const state = anna.state;
+    if (!state || state.phase === 'game_over') break;
+
+    if (state.phase === 'choosing_trump' && state.dealerId === anna.session.playerId) {
+      anna.send({ type: 'choose_trump', suit: 'red' });
+    } else if (state.phase === 'bidding' && anna.last('your_hand')?.canBid) {
+      anna.send({ type: 'make_bid', value: 0 });
+    } else if (state.phase === 'playing' && state.turnPlayerId === anna.session.playerId) {
+      const legal = anna.last('your_hand')?.legal ?? [];
+      if (legal.length) anna.send({ type: 'play_card', cardId: legal[0] });
+    } else if (state.phase === 'round_end') {
+      anna.send({ type: 'continue_round' });
+    }
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+
+  const over = await finished;
+  assert.equal(over.ranking.length, 3);
+  assert.ok(
+    over.ranking.every((entry) => typeof entry.score === 'number'),
+    'jeder hat eine Punktzahl',
+  );
+  anna.close();
+});
+
+test('Bots lassen sich wieder entfernen und blockieren die Rundenwertung nicht', async (t) => {
+  const { url, close, store } = await startServer({ botDelayMs: 10 });
+  t.after(close);
+
+  const anna = await Client.connect(url, 'Anna');
+  anna.send({ type: 'create_room', name: 'Anna' });
+  anna.session = await anna.waitFor('joined');
+  for (let i = 0; i < 3; i++) anna.send({ type: 'add_bot' });
+  await anna.waitFor((m) => m.type === 'room_state' && m.room.botCount === 3, { fresh: true });
+
+  anna.send({ type: 'remove_bot' });
+  const after = (
+    await anna.waitFor((m) => m.type === 'room_state' && m.room.botCount === 2, { fresh: true })
+  ).room;
+  assert.equal(after.players.length, 3);
+
+  // Bei der Rundenwertung wartet der Server nicht auf Bots: Annas Klick reicht.
+  anna.send({ type: 'set_rounds', rounds: 1 });
+  await anna.waitFor((m) => m.type === 'room_state' && m.room.roundsTotal === 1, { fresh: true });
+  anna.send({ type: 'start_game' });
+  await anna.waitFor('game_state');
+
+  for (let step = 0; step < 300; step++) {
+    const state = anna.state;
+    if (!state || state.phase === 'round_end' || state.phase === 'game_over') break;
+    if (state.phase === 'choosing_trump' && state.dealerId === anna.session.playerId) {
+      anna.send({ type: 'choose_trump', suit: 'red' });
+    } else if (state.phase === 'bidding' && anna.last('your_hand')?.canBid) {
+      anna.send({ type: 'make_bid', value: 0 });
+    } else if (state.phase === 'playing' && state.turnPlayerId === anna.session.playerId) {
+      const legal = anna.last('your_hand')?.legal ?? [];
+      if (legal.length) anna.send({ type: 'play_card', cardId: legal[0] });
+    }
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+
+  await anna.waitFor('round_scored', { timeout: 15000 });
+  anna.send({ type: 'continue_round' });
+  // Runde 1 war die letzte → das Spiel endet direkt.
+  const over = await anna.waitFor('game_over', { timeout: 10000 });
+  assert.equal(over.ranking.length, 3);
+  assert.equal(store.size, 1);
+  anna.close();
+});
+
+test('Der Host kann jederzeit abbrechen – alle landen im Warteraum', async (t) => {
+  const { url, close } = await startServer();
+  t.after(close);
+
+  const { clients } = await makeRoom(url, ['Anna', 'Ben', 'Cem']);
+  const [anna, ben] = clients;
+
+  ben.send({ type: 'abort_game' });
+  assert.equal((await ben.waitFor('error')).code, 'not_host');
+
+  anna.send({ type: 'abort_game' });
+  assert.equal(
+    (await anna.waitFor((m) => m.type === 'error' && m.code === 'not_started')).code,
+    'not_started',
+  );
+
+  anna.send({ type: 'start_game' });
+  for (const client of clients) await client.waitFor('game_state');
+  assert.equal(anna.last('room_state').room.started, true);
+
+  ben.send({ type: 'abort_game' });
+  assert.equal(
+    (await ben.waitFor((m) => m.type === 'error' && m.code === 'not_host', { fresh: true })).code,
+    'not_host',
+  );
+
+  anna.send({ type: 'abort_game' });
+  const aborted = await ben.waitFor('game_aborted');
+  assert.equal(aborted.by, 'Anna');
+
+  // Der Warteraum-Zustand kommt im selben Broadcast direkt vor dem Ereignis.
+  const lobby = (await ben.waitFor((m) => m.type === 'room_state' && m.room.started === false)).room;
+  assert.equal(lobby.players.length, 3, 'alle bleiben im Raum');
+
+  // Danach kann direkt eine neue Partie beginnen.
+  anna.send({ type: 'start_game' });
+  const fresh = await ben.waitFor((m) => m.type === 'game_state' && m.state.round === 1, {
+    fresh: true,
+  });
+  assert.equal(fresh.state.round, 1);
+  assert.equal(fresh.state.players.every((p) => p.score === 0), true, 'Punkte sind zurückgesetzt');
 
   for (const client of clients) client.close();
 });

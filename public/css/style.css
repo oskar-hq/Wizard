@@ -395,6 +395,150 @@ input {
   box-shadow: none;
 }
 
+/* --------------------------------- Lobby: Bots, Runden, Abschnitte */
+
+.lobby-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.lobby-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.lobby-note {
+  font-size: 0.78rem;
+  color: var(--text-faint);
+  line-height: 1.4;
+}
+
+.bot-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.stepper {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface-strong);
+  font-size: 1.1rem;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: background 0.15s ease, opacity 0.15s ease;
+}
+
+.stepper:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.stepper:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.stepper-value {
+  min-width: 26px;
+  text-align: center;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.rounds-value {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  font-size: 1.05rem;
+}
+
+.slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 26px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.slider:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.slider::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.slider::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  margin-top: -7px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid #fff;
+}
+
+.slider:focus-visible {
+  outline: none;
+}
+
+.slider:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 4px rgba(108, 140, 255, 0.3);
+}
+
+.tag--bot {
+  background: rgba(168, 85, 247, 0.2);
+  color: #dcc4ff;
+}
+
+.icon-button--danger {
+  border-color: rgba(251, 113, 133, 0.4);
+  color: #ffb3bd;
+}
+
+.icon-button--danger:hover {
+  background: rgba(251, 113, 133, 0.16);
+}
+
+.button--danger {
+  background: linear-gradient(180deg, #f2566b, #d5304a);
+  border-color: transparent;
+  box-shadow: 0 6px 18px rgba(213, 48, 74, 0.32);
+}
+
+.button--danger:hover:not(:disabled) {
+  background: linear-gradient(180deg, #ff6b7e, #e03a52);
+}
+
 /* ------------------------------------------------- Regelerweiterungen */
 
 .variants {
@@ -501,6 +645,10 @@ input {
   justify-content: space-between;
   gap: 10px;
   padding: 10px 14px;
+  /* Über den Dialogen: Punkte, Regeln, Design und „Abbrechen“ bleiben immer
+     erreichbar – auch während der Ansage. */
+  position: relative;
+  z-index: 60;
   border-bottom: 1px solid var(--border);
   background: rgba(10, 12, 18, 0.6);
   backdrop-filter: blur(14px);
@@ -780,36 +928,50 @@ input {
   --face: #eff4fe;
   --ink: #1d4ed8;
   --accent: #0b2f8f;
+  --solid-1: #60a5fa;
+  --solid-2: #1d4ed8;
 }
 .card--red {
   --face: #fdeff1;
   --ink: #cf1f36;
   --accent: #7f1020;
+  --solid-1: #f87171;
+  --solid-2: #b91c1c;
 }
 .card--green {
   --face: #ecf7f2;
   --ink: #0e7a56;
   --accent: #06432f;
+  --solid-1: #4ade80;
+  --solid-2: #15803d;
 }
 .card--yellow {
   --face: #fdf6e4;
   --ink: #a9760a;
   --accent: #6b4703;
+  --solid-1: #fcd34d;
+  --solid-2: #b45309;
 }
 .card--wizard {
   --face: #f5f3f8;
   --ink: #171717;
   --accent: #cf1f36;
+  --solid-1: #a855f7;
+  --solid-2: #5b21b6;
 }
 .card--jester {
   --face: #f2f3f5;
   --ink: #3f4652;
   --accent: #171717;
+  --solid-1: #94a3b8;
+  --solid-2: #334155;
 }
 .card--back {
   --face: #f7f4ec;
   --ink: #171717;
   --accent: #cf1f36;
+  --solid-1: #475569;
+  --solid-2: #0f172a;
 }
 
 .card {
@@ -865,6 +1027,39 @@ input {
 
 .card-art-svg .art-accent-fill {
   fill: var(--accent);
+}
+
+/* Vollfarb-Ebene: nur im Design „Vollfarbe“ sichtbar */
+
+.card-face {
+  position: absolute;
+  inset: 0;
+  display: none;
+  place-items: center;
+  pointer-events: none;
+}
+
+.card-face-glyph {
+  position: absolute;
+  width: 66%;
+  height: 66%;
+  opacity: 0.24;
+}
+
+.card-face-glyph svg {
+  width: 100%;
+  height: 100%;
+  fill: currentColor;
+  display: block;
+}
+
+.card-face-value {
+  position: relative;
+  font-size: calc(var(--card-w) * 0.56);
+  font-weight: 700;
+  letter-spacing: -0.05em;
+  line-height: 1;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
 }
 
 /* Eckzeichen */
@@ -1010,6 +1205,177 @@ button.card.is-blocked {
   font-size: 0.72rem;
   color: var(--text-faint);
   text-align: center;
+}
+
+/* ------------------------------------------------------- Kartendesigns */
+
+/* „Vollfarbe“: kräftige Fläche, große Zahl, Symbol als Wasserzeichen. */
+.card.deck--solid {
+  background: linear-gradient(165deg, var(--solid-1), var(--solid-2));
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.32);
+}
+
+.card.deck--solid .card-art {
+  display: none;
+}
+
+.card.deck--solid .card-face {
+  display: grid;
+}
+
+.card.deck--solid .card-word {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* Die Abbruch-Bestätigung liegt über allem, auch über der Kopfzeile. */
+#overlay-abort {
+  z-index: 80;
+}
+
+/* Die Rückseite behält ihr Muster – sie hat keine Zahl. */
+.card.deck--solid.card--back {
+  --ink: #d7dee9;
+  --accent: #ff8b96;
+}
+
+.card.deck--solid.card--back .card-art {
+  display: block;
+}
+
+.card.deck--solid.card--back .card-face {
+  display: none;
+}
+
+/* „Nacht“: dunkle Karten mit leuchtenden Linien. */
+.card.deck--night {
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.card.deck--night.card--blue {
+  --face: #0e1a33;
+  --ink: #7fb2ff;
+  --accent: #4c85e8;
+}
+.card.deck--night.card--red {
+  --face: #2a0e14;
+  --ink: #ff8b96;
+  --accent: #e04b5c;
+}
+.card.deck--night.card--green {
+  --face: #08211a;
+  --ink: #66dfae;
+  --accent: #2aa87b;
+}
+.card.deck--night.card--yellow {
+  --face: #251b06;
+  --ink: #f4c552;
+  --accent: #c08a1b;
+}
+.card.deck--night.card--wizard {
+  --face: #1a1030;
+  --ink: #d9c2ff;
+  --accent: #ff8b96;
+}
+.card.deck--night.card--jester {
+  --face: #14181f;
+  --ink: #a8b4c6;
+  --accent: #6a768a;
+}
+.card.deck--night.card--back {
+  --face: #0d1117;
+  --ink: #9aa8bd;
+  --accent: #ff6b7e;
+}
+
+/* „Schwarz-Rot“: wie ein klassisches Blatt – nur zwei Zeichenfarben. */
+.card.deck--redblack.card--blue,
+.card.deck--redblack.card--green,
+.card.deck--redblack.card--wizard,
+.card.deck--redblack.card--back {
+  --face: #f8f5ee;
+  --ink: #16181d;
+  --accent: #cf1f36;
+}
+
+.card.deck--redblack.card--red,
+.card.deck--redblack.card--yellow {
+  --face: #f8f5ee;
+  --ink: #cf1f36;
+  --accent: #16181d;
+}
+
+.card.deck--redblack.card--jester {
+  --face: #f8f5ee;
+  --ink: #16181d;
+  --accent: #8b8b8b;
+}
+
+/* Auswahl der Designs */
+
+.deck-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.deck-option {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.22);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.12s ease;
+}
+
+.deck-option:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.deck-option:active {
+  transform: scale(0.99);
+}
+
+.deck-option.is-active {
+  border-color: var(--accent);
+  background: rgba(108, 140, 255, 0.12);
+}
+
+.deck-preview {
+  display: flex;
+  flex: none;
+  --card-w: 44px;
+  --card-h: 62px;
+}
+
+.deck-preview .card:not(:first-child) {
+  margin-left: -18px;
+}
+
+.deck-preview .card:nth-child(2) {
+  transform: translateY(-3px);
+}
+
+.deck-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.deck-name {
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+
+.deck-text {
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  line-height: 1.4;
 }
 
 /* --------------------------------------------------------------- Sheets */

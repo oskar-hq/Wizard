@@ -16,6 +16,16 @@ export const MIN_PLAYERS = 3;
 export const MAX_PLAYERS = 6;
 
 /**
+ * Begrenzt eine gewünschte Rundenzahl auf das, was das Deck hergibt.
+ * `null`/`undefined` bedeutet „so viele Runden wie möglich“.
+ */
+export function clampRounds(wanted, playerCount) {
+  const max = roundsForPlayers(playerCount);
+  if (wanted === null || wanted === undefined || !Number.isFinite(Number(wanted))) return max;
+  return Math.max(1, Math.min(max, Math.floor(Number(wanted))));
+}
+
+/**
  * Die Farbe, die bedient werden muss.
  *
  * - Leerer Stich → keine.

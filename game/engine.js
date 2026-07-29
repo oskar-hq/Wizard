@@ -22,6 +22,7 @@ import {
   isLegalPlay,
   isValidBid,
   isValidSuit,
+  clampRounds,
   leadSuitOf,
   legalCards,
   lowestWins,
@@ -46,10 +47,11 @@ export class WizardGame {
    * @param {number} [options.seed] Seed für den Mischalgorithmus
    * @param {number} [options.startDealerIndex] Geber der ersten Runde
    * @param {object} [options.variants] Regelerweiterungen (siehe rules.js)
+   * @param {number} [options.roundsTotal] Gewünschte Rundenzahl (Standard: Maximum)
    * @param {(round: number) => object[]} [options.deckFor]
    *        Test-Hook: liefert ein fertig sortiertes 60-Karten-Deck pro Runde.
    */
-  constructor({ playerIds, seed, startDealerIndex = 0, deckFor, variants } = {}) {
+  constructor({ playerIds, seed, startDealerIndex = 0, deckFor, variants, roundsTotal } = {}) {
     if (!Array.isArray(playerIds)) {
       throw new GameError('invalid_players', 'Spielerliste fehlt.');
     }
@@ -76,7 +78,8 @@ export class WizardGame {
       score: 0,
     }));
     this.playerCount = this.players.length;
-    this.roundsTotal = roundsForPlayers(this.playerCount);
+    this.maxRounds = roundsForPlayers(this.playerCount);
+    this.roundsTotal = clampRounds(roundsTotal, this.playerCount);
 
     this.round = 0;
     this.phase = 'idle';
@@ -415,6 +418,7 @@ export class WizardGame {
       phase: this.phase,
       round: this.round,
       roundsTotal: this.roundsTotal,
+      maxRounds: this.maxRounds,
       dealerId: this.phase === 'idle' ? null : this.dealerId,
       turnPlayerId: this.turnPlayerId,
       trumpCard: this.trumpCard,

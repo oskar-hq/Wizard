@@ -5,6 +5,7 @@
 
 const SESSION_KEY = 'wizard.session';
 const NAME_KEY = 'wizard.name';
+const DECK_KEY = 'wizard.deck';
 
 const safeStorage = (() => {
   try {
@@ -44,4 +45,10 @@ export const session = {
 export const lastName = {
   get: () => safeStorage.getItem(NAME_KEY) ?? '',
   set: (name) => safeStorage.setItem(NAME_KEY, name),
+};
+
+/** Gewähltes Kartendesign – eine rein persönliche Einstellung. */
+export const deckStyle = {
+  get: () => safeStorage.getItem(DECK_KEY) ?? 'line',
+  set: (id) => safeStorage.setItem(DECK_KEY, id),
 };

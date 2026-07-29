@@ -7,6 +7,7 @@
  */
 
 import { GameError } from '../game/engine.js';
+import { botBid, botCard, botTrump } from './bot.js';
 import { RoomError, RoomStore, sanitizeName } from './rooms.js';
 
 /** Wie lange ein fertiger Stich liegen bleibt, bevor er abgeräumt wird. */
@@ -15,6 +16,8 @@ export const TRICK_DISPLAY_MS = 2600;
 export const ROUND_END_MS = 15000;
 /** Gnadenfrist, bis ein getrennter Spieler aus der offenen Lobby fliegt. */
 export const LOBBY_GRACE_MS = 90000;
+/** Bedenkzeit eines Bots, damit Züge nachvollziehbar bleiben. */
+export const BOT_DELAY_MS = 900;
 
 const send = (socket, payload) => {
   if (socket && socket.readyState === 1) {
@@ -28,11 +31,13 @@ export class GameHub {
     log = () => {},
     trickDisplayMs = Number(process.env.WIZARD_TRICK_MS ?? TRICK_DISPLAY_MS),
     roundEndMs = Number(process.env.WIZARD_ROUND_MS ?? ROUND_END_MS),
+    botDelayMs = Number(process.env.WIZARD_BOT_MS ?? BOT_DELAY_MS),
   } = {}) {
     this.store = store;
     this.log = log;
     this.trickDisplayMs = trickDisplayMs;
     this.roundEndMs = roundEndMs;
+    this.botDelayMs = botDelayMs;
   }
 
   // ------------------------------------------------------------ Verbindung
@@ -117,6 +122,14 @@ export class GameHub {
         return this.leaveRoom(socket);
       case 'set_variants':
         return this.setVariants(socket, message);
+      case 'set_rounds':
+        return this.setRounds(socket, message);
+      case 'add_bot':
+        return this.addBot(socket);
+      case 'remove_bot':
+        return this.removeBot(socket, message);
+      case 'abort_game':
+        return this.abortGame(socket);
       case 'start_game':
         return this.startGame(socket);
       case 'choose_trump':
@@ -208,8 +221,9 @@ export class GameHub {
   /** Platz + Hand mit dem Session-Token wiederherstellen. */
   reconnect(socket, message) {
     const room = this.store.require(message.code);
-    const player = room.playerByToken(String(message.token ?? ''));
-    if (!player || player.id !== message.playerId) {
+    const token = typeof message.token === 'string' ? message.token : '';
+    const player = token ? room.playerByToken(token) : null;
+    if (!player || player.isBot || player.id !== message.playerId) {
       throw new RoomError('bad_token', 'Deine Sitzung ist abgelaufen.');
     }
     this.attach(socket, room, player);
@@ -251,6 +265,46 @@ export class GameHub {
     }
     room.setVariants(message.variants);
     this.broadcast(room);
+  }
+
+  /** Rundenzahl per Schieber – nur der Host, nur in der Lobby. */
+  setRounds(socket, message) {
+    const { room, player } = this.requireHost(socket);
+    room.setRounds(message.rounds ?? null);
+    this.log(`≡ Raum ${room.code}: ${room.roundsTotal} Runden (von ${player.name})`);
+    this.broadcast(room);
+  }
+
+  /** Bot hinzufügen. */
+  addBot(socket) {
+    const { room } = this.requireHost(socket);
+    const bot = room.addBot();
+    this.log(`+ Raum ${room.code}: Bot ${bot.name} sitzt auf`);
+    this.broadcast(room, { type: 'bot_added', playerId: bot.id, name: bot.name });
+  }
+
+  /** Bot entfernen (ohne Angabe den zuletzt hinzugefügten). */
+  removeBot(socket, message = {}) {
+    const { room } = this.requireHost(socket);
+    const bot = room.removeBot(message.playerId ?? null);
+    this.log(`− Raum ${room.code}: Bot ${bot.name} geht`);
+    this.broadcast(room, { type: 'bot_removed', playerId: bot.id, name: bot.name });
+  }
+
+  /** Der Host bricht die laufende Partie ab – alle landen wieder im Warteraum. */
+  abortGame(socket) {
+    const { room, player } = this.requireHost(socket);
+    room.abortGame();
+    this.log(`✕ Raum ${room.code}: Spiel von ${player.name} abgebrochen`);
+    this.broadcast(room, { type: 'game_aborted', by: player.name });
+  }
+
+  requireHost(socket) {
+    const { room, player } = this.context(socket);
+    if (room.hostId !== player.id) {
+      throw new RoomError('not_host', 'Das kann nur der Host.');
+    }
+    return { room, player };
   }
 
   startGame(socket) {
@@ -299,7 +353,11 @@ export class GameHub {
   playCard(socket, message) {
     const { room, player, game } = this.requireGame(socket);
     const event = game.playCard(player.id, String(message.cardId ?? ''));
+    this.afterPlay(room, event);
+  }
 
+  /** Nachbereitung eines Kartenzugs – für Menschen und Bots gleich. */
+  afterPlay(room, event) {
     if (event.type === 'trick_complete') {
       const winner = room.player(event.winnerId);
       this.broadcast(room, {
@@ -338,7 +396,7 @@ export class GameHub {
     room.readyForNext ??= new Set();
     room.readyForNext.add(player.id);
     const waitingFor = room.players.filter(
-      (p) => p.connected && !room.readyForNext.has(p.id),
+      (p) => p.connected && !p.isBot && !room.readyForNext.has(p.id),
     );
     if (waitingFor.length === 0) {
       this.advanceRound(room);
@@ -372,6 +430,121 @@ export class GameHub {
     }));
   }
 
+  // ---------------------------------------------------------------- Bots
+
+  /**
+   * Ist gerade ein Bot am Zug, wird sein Zug mit kurzer Bedenkzeit eingeplant.
+   * Wird nach jedem Broadcast aufgerufen; die Kette läuft dadurch von selbst
+   * weiter, bis wieder ein Mensch dran ist.
+   */
+  scheduleBots(room) {
+    if (!room.game || room.botTimer) return;
+    // Ohne Zuschauer muss auch kein Bot spielen – beim Reconnect geht es weiter.
+    if (!room.anyoneConnected) return;
+    const actor = this.nextBotActor(room);
+    if (!actor) return;
+    room.botTimer = room.later(() => {
+      room.botTimer = null;
+      this.playBotMove(room, actor.id);
+    }, this.botDelayMs);
+  }
+
+  /** Welcher Bot ist als nächstes gefragt? */
+  nextBotActor(room) {
+    const game = room.game;
+    if (!game) return null;
+    const asBot = (playerId) => {
+      if (!playerId) return null;
+      const player = room.player(playerId);
+      return player?.isBot ? player : null;
+    };
+
+    if (game.phase === 'choosing_trump') return asBot(game.dealerId);
+    if (game.phase === 'bidding') {
+      if (game.variants.hiddenBids) {
+        return room.players.find((p) => p.isBot && game.bidOf(p.id) === null) ?? null;
+      }
+      return asBot(game.turnPlayerId);
+    }
+    if (game.phase === 'playing' && !game.trickResult) return asBot(game.turnPlayerId);
+    return null;
+  }
+
+  /** Führt den Zug eines Bots aus. */
+  playBotMove(room, playerId) {
+    const game = room.game;
+    if (!game) return;
+    const player = room.player(playerId);
+    if (!player?.isBot) return;
+
+    try {
+      if (game.phase === 'choosing_trump' && game.dealerId === playerId) {
+        const suit = botTrump({ hand: game.handOf(playerId) });
+        game.chooseTrump(playerId, suit);
+        this.broadcast(room, { type: 'trump_chosen', playerId, name: player.name, suit });
+        return;
+      }
+
+      if (game.phase === 'bidding' && game.canBid(playerId)) {
+        const value = botBid({
+          hand: game.handOf(playerId),
+          round: game.round,
+          trumpSuit: game.trumpSuit,
+          forbidden: game.forbiddenBidFor(playerId),
+        });
+        game.bid(playerId, value);
+        this.broadcast(room, { type: 'bid_made', playerId, name: player.name, value });
+        return;
+      }
+
+      if (game.phase === 'playing' && !game.trickResult && game.turnPlayerId === playerId) {
+        const seat = game.player(playerId);
+        const card = botCard({
+          hand: game.handOf(playerId),
+          trick: game.trick,
+          trumpSuit: game.trumpSuit,
+          bid: seat.bid,
+          tricks: seat.tricks,
+          tricksLeft: game.round - game.trickNumber + 1,
+          avoidTricks: game.variants.avoidTricks,
+        });
+        this.afterPlay(room, game.playCard(playerId, card.id));
+        return;
+      }
+    } catch (error) {
+      // Ein Bot darf das Spiel nie blockieren: notfalls irgendein gültiger Zug.
+      this.log(`Bot ${player.name}: ${error.message} – weiche aus`);
+      this.playBotFallback(room, playerId);
+      return;
+    }
+    // Nichts zu tun – der Zustand hat sich zwischenzeitlich geändert. Der
+    // nächste Broadcast plant ohnehin neu, hier wird bewusst nichts getan.
+  }
+
+  /** Notfallzug, falls die Heuristik eine ungültige Karte gewählt hat. */
+  playBotFallback(room, playerId) {
+    const game = room.game;
+    if (!game) return;
+    try {
+      if (game.phase === 'choosing_trump' && game.dealerId === playerId) {
+        game.chooseTrump(playerId, 'red');
+      } else if (game.phase === 'bidding' && game.canBid(playerId)) {
+        const forbidden = game.forbiddenBidFor(playerId);
+        game.bid(playerId, forbidden === 0 ? 1 : 0);
+      } else if (game.phase === 'playing' && game.turnPlayerId === playerId) {
+        const legal = game.legalCardsFor(playerId);
+        if (!legal.length) return;
+        this.afterPlay(room, game.playCard(playerId, legal[0].id));
+        return;
+      } else {
+        return;
+      }
+      this.broadcast(room);
+    } catch (error) {
+      this.log(`Bot-Notfallzug fehlgeschlagen: ${error.message}`);
+    }
+  }
+
   // ------------------------------------------------------------ Verteilung
 
   /**
@@ -401,5 +574,7 @@ export class GameHub {
       }
       if (extraEvent) send(player.socket, extraEvent);
     }
+
+    this.scheduleBots(room);
   }
 }

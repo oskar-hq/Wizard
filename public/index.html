@@ -55,6 +55,7 @@
           />
         </label>
         <button id="btn-join" class="button">Raum beitreten</button>
+        <button id="btn-decks-home" class="button button--ghost">Kartendesign</button>
         <button id="btn-rules-home" class="button button--ghost">Spielregeln</button>
       </div>
     </section>
@@ -72,6 +73,35 @@
 
         <p class="lobby-hint" id="lobby-hint">Warte auf Mitspieler …</p>
         <ul class="player-list" id="lobby-players"></ul>
+
+        <div class="lobby-section">
+          <div class="lobby-row">
+            <p class="eyebrow">Mitspieler-Bots</p>
+            <div class="bot-controls">
+              <button id="btn-bot-remove" class="stepper" type="button" aria-label="Bot entfernen">−</button>
+              <span class="stepper-value" id="bot-count">0</span>
+              <button id="btn-bot-add" class="stepper" type="button" aria-label="Bot hinzufügen">+</button>
+            </div>
+          </div>
+          <p class="lobby-note" id="bot-note">Bots füllen den Tisch auf, wenn Freunde fehlen.</p>
+        </div>
+
+        <div class="lobby-section">
+          <div class="lobby-row">
+            <p class="eyebrow">Rundenanzahl</p>
+            <span class="rounds-value" id="rounds-value">20</span>
+          </div>
+          <input
+            id="rounds-slider"
+            class="slider"
+            type="range"
+            min="1"
+            max="20"
+            step="1"
+            value="20"
+          />
+          <p class="lobby-note" id="rounds-note"></p>
+        </div>
 
         <div class="variants">
           <p class="eyebrow">Regelerweiterungen</p>
@@ -97,7 +127,11 @@
         <div class="topbar-group">
           <div class="trump-slot" id="trump-slot"></div>
           <button class="icon-button" id="btn-scores" title="Punktestand">Punkte</button>
+          <button class="icon-button" id="btn-decks-game" title="Kartendesign">Design</button>
           <button class="icon-button" id="btn-rules-game" title="Regeln">Regeln</button>
+          <button class="icon-button icon-button--danger" id="btn-abort" title="Spiel abbrechen" hidden>
+            Abbrechen
+          </button>
         </div>
       </header>
 
@@ -155,6 +189,29 @@
         <p class="sheet-sub" id="gameover-sub"></p>
         <ol class="ranking" id="ranking"></ol>
         <button class="button button--primary" id="btn-home">Zurück zum Start</button>
+      </div>
+    </div>
+
+    <div class="overlay" id="overlay-decks" hidden>
+      <div class="sheet sheet--wide sheet--scroll">
+        <h2 class="sheet-title">Kartendesign</h2>
+        <p class="sheet-sub">
+          Gilt nur für dich – jeder am Tisch kann ein anderes Design verwenden.
+        </p>
+        <div class="deck-list" id="deck-list"></div>
+        <button class="button" id="btn-close-decks">Schließen</button>
+      </div>
+    </div>
+
+    <div class="overlay" id="overlay-abort" hidden>
+      <div class="sheet">
+        <h2 class="sheet-title">Spiel abbrechen?</h2>
+        <p class="sheet-sub">
+          Die laufende Partie wird beendet und alle landen wieder im Warteraum.
+          Punkte gehen verloren.
+        </p>
+        <button class="button button--danger" id="btn-abort-confirm">Ja, abbrechen</button>
+        <button class="button button--ghost" id="btn-abort-cancel">Weiterspielen</button>
       </div>
     </div>
 

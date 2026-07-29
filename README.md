@@ -11,8 +11,18 @@ deutschsprachig, ohne Build-Step, als einzelner Docker-Container betreibbar und
 ## Kartengestaltung
 
 Das Deck ist vollständig im Browser gezeichnet – kein einziges Bild, nur CSS
-und SVG-Pfade. Jede Farbe hat eine helle Kartenfläche, einen kräftigen
-Zeichenton und einen dunkleren Akzent:
+und SVG-Pfade. Über *Kartendesign* (Startseite oder Kopfzeile im Spiel) stehen
+vier Stile zur Wahl; die Einstellung gilt nur für den eigenen Browser, jeder am
+Tisch kann ein anderes Design fahren:
+
+| Design | Optik |
+| ------ | ----- |
+| **Linien** (Standard) | Helle Karten, geometrische Linienzeichnung in vier Farben |
+| **Vollfarbe** | Kräftige Farbflächen, große Zahl, Symbol als Wasserzeichen |
+| **Nacht** | Dunkle Karten mit leuchtenden Linien |
+| **Schwarz-Rot** | Nur Schwarz und Rot wie ein klassisches Blatt (Rot/Gelb rot, Blau/Grün schwarz) |
+
+Der Aufbau der Karten ist in allen Designs gleich:
 
 - **1** – ein großes Volks-Symbol im gestrichelten Zierring
 - **2–10** – die klassische Symbolanordnung, untere Hälfte auf dem Kopf
@@ -45,6 +55,14 @@ Blatt (Elfen/Grün), Bergmassiv (Riesen/Gelb).
 - **Responsive:** funktioniert am Desktop und am Handy.
 - **Regelerweiterungen:** drei Varianten lassen sich im Warteraum einzeln
   zuschalten (siehe unten) – ohne Häkchen gilt exakt das Grundspiel.
+- **Rundenanzahl frei wählbar:** Schieberegler im Warteraum, von einer Runde bis
+  zum vollen Spiel.
+- **Bots:** Der Host setzt beliebig viele Mitspieler-Bots dazu; sie sagen an und
+  spielen selbst. Damit geht es schon ab einem Menschen los.
+- **Abbruch jederzeit:** Der Host kann eine laufende Partie beenden – alle landen
+  wieder im Warteraum.
+- **Vier Kartendesigns:** Linien, Vollfarbe, Nacht und Schwarz-Rot, umschaltbar
+  pro Spieler.
 
 ---
 
@@ -82,8 +100,9 @@ Abgedeckt sind u. a.: Deckaufbau (60 Karten), Rundenzahl je Spielerzahl,
 gültige Ansagen, Bedienpflicht, Zauberer-/Narr-Sonderfälle, Stichauflösung,
 Wertung, Trumpfbestimmung inkl. Trumpfwahl durch den Geber, die letzte Runde
 ohne Trumpf, vollständige Spieldurchläufe mit 3–6 Spielern, alle drei
-Regelerweiterungen sowie Lobby, Zug-Validierung, Handkarten-Privatheit und
-Reconnect über echte WebSockets.
+Regelerweiterungen, Rundenanzahl, Bot-Entscheidungen und Spielabbruch sowie
+Lobby, Zug-Validierung, Handkarten-Privatheit und Reconnect über echte
+WebSockets.
 
 ---
 
@@ -122,6 +141,7 @@ docker run -d --name wizard-online --restart unless-stopped \
 | `HOST`             | `0.0.0.0` | Bind-Adresse                                          |
 | `WIZARD_TRICK_MS`  | `2600`    | Wie lange ein fertiger Stich liegen bleibt (ms)       |
 | `WIZARD_ROUND_MS`  | `15000`   | Wie lange die Rundenwertung ohne Klick stehen bleibt  |
+| `WIZARD_BOT_MS`    | `900`     | Bedenkzeit eines Bots je Zug (ms)                     |
 
 Gesundheitscheck: `GET /healthz` → `{"ok":true,"rooms":N,"uptime":S}`
 
@@ -188,13 +208,41 @@ Wenn das `{"ok":true,…}` liefert, funktioniert auch der WebSocket – er läuf
 
 1. **Startseite:** Namen eingeben → *Raum erstellen* (liefert einen 4-stelligen
    Code) oder *Raum beitreten* per Code.
-2. **Warteraum:** Alle Anwesenden werden gelistet. Der Host kann
-   Regelerweiterungen zuschalten und ab 3 Spielern starten (max. 6).
+2. **Warteraum:** Alle Anwesenden werden gelistet. Der Host stellt Bots,
+   Rundenanzahl und Regelerweiterungen ein und startet ab 3 Spielern (max. 6).
 3. **Runde:** Karten werden gegeben, die Trumpfkarte aufgedeckt (bei einem
    Zauberer wählt der Geber die Farbe), dann sagt jeder reihum seine Stiche an,
    danach werden die Stiche gespielt.
 4. Nach jeder Runde erscheint eine Wertungsübersicht; mit *Weiter* geht es
-   sofort weiter, sonst automatisch nach `WIZARD_ROUND_MS`.
+   sofort weiter, sonst automatisch nach `WIZARD_ROUND_MS`. Auf Bots wird dabei
+   nicht gewartet.
+5. Der Host kann die Partie über *Abbrechen* in der Kopfzeile jederzeit beenden –
+   auch während ein Dialog offen ist, denn die Kopfzeile bleibt immer bedienbar.
+
+## Rundenanzahl
+
+Standardmäßig wird das volle Spiel gespielt: `floor(60 / Spielerzahl)` Runden.
+Mit dem Schieberegler im Warteraum lässt sich die Partie beliebig kürzen, von
+einer einzelnen Runde bis zum Maximum. Ändert sich die Spielerzahl noch, wird
+der Wert automatisch auf das dann Mögliche begrenzt.
+
+## Bots
+
+Der Host setzt Bots über `+` und `−` an den Tisch, bis zu sechs Plätze
+insgesamt. Bots
+
+- schätzen ihre Hand ab und sagen entsprechend an (mit leichter Streuung, damit
+  mehrere Bots nicht gleichförmig wirken),
+- wählen bei aufgedecktem Zauberer die Farbe, in der sie am stärksten sind,
+- stechen, wenn sie den Stich brauchen, und werfen sonst möglichst ungefährlich
+  ab – in der Variante „Nur keine Stiche!“ immer defensiv,
+- halten sich an die Bedienpflicht (der Server prüft es ohnehin) und
+- sehen nur, was ein Mensch am Tisch auch sieht: die eigene Hand, den laufenden
+  Stich, Trumpf und Ansagen.
+
+Bots brauchen eine kurze Bedenkzeit (`WIZARD_BOT_MS`, Standard 900 ms), damit
+man ihre Züge verfolgen kann. Ist kein Mensch verbunden, ruhen sie – beim
+Reconnect geht es weiter.
 
 ## Regeln (verbindlich umgesetzt)
 
@@ -273,13 +321,15 @@ game/          Spiel-Engine – rein, ohne Netzwerk
   engine.js      Zustandsautomat einer Partie
 server/
   app.js         Express + ws zusammengebaut (ohne listen)
+  bot.js         Entscheidungen der Mitspieler-Bots
   index.js       Serverstart, Signal-Handling
   rooms.js       Räume, Spieler, Session-Token
   protocol.js    WebSocket-Nachrichten → Engine-Aufrufe
 public/
   index.html     Alle Ansichten (Start, Lobby, Tisch, Dialoge)
   css/style.css  Optik inkl. selbst gezeichneter Karten
-  js/            app.js, net.js, table.js, lobby.js, cards.js, store.js, dom.js
+  js/            app.js, net.js, table.js, lobby.js, cards.js, decks.js,
+                 variants.js, store.js, dom.js
   fonts/         Space Grotesk (SIL Open Font License 1.1), lokal eingebunden
 test/          Engine- und Server-Tests (node --test)
 ```
@@ -297,6 +347,10 @@ Alle Nachrichten sind JSON-Objekte mit einem `type`-Feld.
 | `reconnect`      | `code`, `playerId`, `token`|
 | `leave_room`     | –                          |
 | `set_variants`   | `variants` (nur Host)      |
+| `set_rounds`     | `rounds` oder `null` (nur Host) |
+| `add_bot`        | – (nur Host)               |
+| `remove_bot`     | optional `playerId` (nur Host) |
+| `abort_game`     | – (nur Host)               |
 | `start_game`     | – (nur Host)               |
 | `choose_trump`   | `suit`                     |
 | `make_bid`       | `value`                    |
@@ -317,6 +371,8 @@ Alle Nachrichten sind JSON-Objekte mit einem `type`-Feld.
 | `round_started`| neue Rundennummer                                            |
 | `game_over`    | Endstand                                                     |
 | `trump_chosen` | wer welche Trumpffarbe gewählt hat                           |
+| `game_aborted` | der Host hat abgebrochen (`by` = Name)                       |
+| `bot_added` / `bot_removed` | ein Bot kam dazu bzw. ging                      |
 | `error`        | `code` + deutsche Fehlermeldung                              |
 
 ---

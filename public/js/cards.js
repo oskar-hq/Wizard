@@ -27,6 +27,21 @@ export const SUIT_RACES = {
 
 export const SUIT_ORDER = ['blue', 'red', 'green', 'yellow'];
 
+/**
+ * Das aktuell gewählte Kartendesign. Es landet als Klasse auf jeder Karte,
+ * damit auch die Vorschau in der Auswahl ein anderes Design zeigen kann als
+ * der Rest der Seite.
+ */
+let activeDeck = 'line';
+
+export function setActiveDeck(id) {
+  activeDeck = id || 'line';
+}
+
+export function getActiveDeck() {
+  return activeDeck;
+}
+
 // --------------------------------------------------------------- Symbole
 
 /** Volks-Symbole in einem 24×24-Feld, als gefüllte Formen. */
@@ -326,13 +341,14 @@ function indexCorner(card, variant, position) {
  * @param {boolean} [options.playable] Karte ist anklickbar
  * @param {boolean} [options.blocked] Karte ist regelwidrig (ausgegraut)
  * @param {boolean} [options.mini] Kleinformat ohne Mittelgrafik
+ * @param {string} [options.deck] Kartendesign (Standard: das gewählte)
  * @param {(card: object) => void} [options.onSelect]
  */
 export function renderCard(card, options = {}) {
   const { as = 'div', playable = false, blocked = false, mini = false, onSelect } = options;
   const variant = cardVariant(card);
 
-  const classes = ['card', `card--${variant}`];
+  const classes = ['card', `card--${variant}`, `deck--${options.deck ?? activeDeck}`];
   if (playable) classes.push('is-playable');
   if (blocked) classes.push('is-blocked');
   if (mini) classes.push('card--mini');
@@ -357,6 +373,11 @@ export function renderCard(card, options = {}) {
     el('span.card-art', {
       html: svgTag(cardArt(card), '0 0 100 140', 'card-art-svg'),
     }),
+    // Nur im Design „Vollfarbe“ sichtbar: große Zahl über blassem Symbol.
+    el('span.card-face', {}, [
+      el('span.card-face-glyph', { html: glyphMarkup(variant) }),
+      el('span.card-face-value', { text: cardIndex(card) }),
+    ]),
     indexCorner(card, variant, 'br'),
   );
 
@@ -387,7 +408,7 @@ const BACK_PATTERN =
 
 /** Eine verdeckte Karte (Rückseite). */
 export function renderCardBack(options = {}) {
-  const node = el('div.card.card--back', {
+  const node = el(`div.card.card--back.deck--${options.deck ?? activeDeck}`, {
     'aria-hidden': 'true',
     ...(options.style ? { style: options.style } : {}),
   });
@@ -397,5 +418,5 @@ export function renderCardBack(options = {}) {
 
 /** Kleine Farbkachel für die Trumpfwahl. */
 export function suitSwatch(suit) {
-  return el(`span.trump-swatch.card--${suit}`, { html: glyphMarkup(suit) });
+  return el(`span.trump-swatch.card--${suit}.deck--${activeDeck}`, { html: glyphMarkup(suit) });
 }

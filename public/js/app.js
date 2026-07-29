@@ -7,10 +7,11 @@
 
 import { $, joinNames, show, toast } from './dom.js';
 import { Net } from './net.js';
-import { lastName, session } from './store.js';
+import { deckStyle, lastName, session } from './store.js';
 import { renderCard } from './cards.js';
 import { renderLobby } from './lobby.js';
 import { renderVariantDocs } from './variants.js';
+import { applyDeck, renderDeckPicker } from './decks.js';
 import { renderGameOver, renderRoundOverlay, renderScoreboard, renderTable } from './table.js';
 
 const net = new Net();
@@ -64,11 +65,13 @@ function render() {
           type: 'set_variants',
           variants: { ...(app.room.variants ?? {}), [key]: value },
         }),
+      onRounds: (rounds) => net.send({ type: 'set_rounds', rounds }),
     });
     return;
   }
 
   showScreen('game');
+  show($('btn-abort'), app.room.hostId === app.meId && app.state.phase !== 'game_over');
   renderTable({
     state: app.state,
     hand: app.hand,
@@ -91,7 +94,7 @@ function render() {
     );
     const ready = new Set(app.state.readyForNext ?? []);
     const waiting = app.state.players
-      .filter((p) => p.connected && !ready.has(p.id))
+      .filter((p) => p.connected && !p.isBot && !ready.has(p.id))
       .map((p) => p.name);
     $('btn-continue').disabled = ready.has(app.meId);
     $('round-waiting').textContent = waiting.length
@@ -156,6 +159,13 @@ net.on('trick_won', (message) => {
   if (message.winnerId === app.meId) toast('Der Stich gehört dir!', 'good', 1800);
 });
 
+net.on('game_aborted', (message) => {
+  for (const id of ['overlay-bid', 'overlay-trump', 'overlay-round', 'overlay-gameover']) {
+    show($(id), false);
+  }
+  toast(`${message.by} hat das Spiel abgebrochen.`, 'error', 4000);
+});
+
 net.on('trump_chosen', (message) => {
   if (message.playerId !== app.meId) {
     toast(`${message.name} wählt ${SUIT_NAMES[message.suit] ?? message.suit} als Trumpf.`);
@@ -193,6 +203,21 @@ net.on('error', (message) => {
 const SUIT_NAMES = { blue: 'Blau', red: 'Rot', green: 'Grün', yellow: 'Gelb' };
 
 // ------------------------------------------------------------ Bedienung
+
+/** Drei Beispielkarten auf der Startseite – zeigt gleich, wie das Deck aussieht. */
+function renderHeroCards() {
+  $('hero-cards').replaceChildren(
+    ...[
+      { id: 'red-13', kind: 'suit', suit: 'red', value: 13 },
+      { id: 'wizard-1', kind: 'wizard', suit: null, value: null },
+      { id: 'green-11', kind: 'suit', suit: 'green', value: 11 },
+    ].map((card, index) => {
+      const node = renderCard(card);
+      node.classList.add(`hero-card--${index + 1}`);
+      return node;
+    }),
+  );
+}
 
 function currentName() {
   const name = $('input-name').value.trim();
@@ -240,6 +265,36 @@ $('btn-continue').addEventListener('click', () => {
   net.send({ type: 'continue_round' });
 });
 
+$('btn-bot-add').addEventListener('click', () => net.send({ type: 'add_bot' }));
+$('btn-bot-remove').addEventListener('click', () => net.send({ type: 'remove_bot' }));
+
+$('btn-abort').addEventListener('click', () => show($('overlay-abort'), true));
+$('btn-abort-cancel').addEventListener('click', () => show($('overlay-abort'), false));
+$('btn-abort-confirm').addEventListener('click', () => {
+  show($('overlay-abort'), false);
+  net.send({ type: 'abort_game' });
+});
+
+// --------------------------------------------------------- Kartendesign
+
+/** Design wählen: speichern, anwenden und alle Karten neu zeichnen. */
+function pickDeck(id) {
+  deckStyle.set(applyDeck(id));
+  renderDeckPicker($('deck-list'), deckStyle.get(), pickDeck);
+  renderHeroCards();
+  render();
+}
+
+function openDeckPicker() {
+  renderDeckPicker($('deck-list'), deckStyle.get(), pickDeck);
+  show($('overlay-decks'), true);
+}
+
+for (const id of ['btn-decks-home', 'btn-decks-game']) {
+  $(id).addEventListener('click', openDeckPicker);
+}
+$('btn-close-decks').addEventListener('click', () => show($('overlay-decks'), false));
+
 $('btn-copy-code').addEventListener('click', async () => {
   const code = app.room?.code ?? '';
   try {
@@ -269,7 +324,9 @@ $('btn-home').addEventListener('click', () => {
 
 document.addEventListener('keydown', (event) => {
   if (event.key !== 'Escape') return;
-  for (const id of ['overlay-rules', 'overlay-scores']) show($(id), false);
+  for (const id of ['overlay-rules', 'overlay-scores', 'overlay-decks', 'overlay-abort']) {
+    show($(id), false);
+  }
 });
 
 // Beim Zurückkehren auf die Seite (Handy aus dem Standby) sofort prüfen.
@@ -279,20 +336,9 @@ document.addEventListener('visibilitychange', () => {
 
 // ----------------------------------------------------------------- Start
 
-// Drei Beispielkarten auf der Startseite – zeigt gleich, wie das Deck aussieht.
-$('hero-cards').replaceChildren(
-  ...[
-    { id: 'red-13', kind: 'suit', suit: 'red', value: 13 },
-    { id: 'wizard-1', kind: 'wizard', suit: null, value: null },
-    { id: 'green-11', kind: 'suit', suit: 'green', value: 11 },
-  ].map((card, index) => {
-    const node = renderCard(card);
-    node.classList.add(`hero-card--${index + 1}`);
-    return node;
-  }),
-);
-
 $('input-name').value = lastName.get();
+applyDeck(deckStyle.get());
+renderHeroCards();
 const saved = session.load();
 if (saved) {
   app.meId = saved.playerId;
