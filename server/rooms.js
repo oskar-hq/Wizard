@@ -8,7 +8,7 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 
 import { WizardGame, GameError } from '../game/engine.js';
-import { MAX_PLAYERS, MIN_PLAYERS } from '../game/rules.js';
+import { DEFAULT_VARIANTS, MAX_PLAYERS, MIN_PLAYERS, normalizeVariants } from '../game/rules.js';
 
 /** Zeichen ohne Verwechslungsgefahr (kein 0/O, 1/I). */
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -52,6 +52,7 @@ export class Room {
     this.code = code;
     this.players = []; // {id, name, token, connected, socket, isHost}
     this.game = null;
+    this.variants = { ...DEFAULT_VARIANTS };
     this.createdAt = Date.now();
     this.lastActivity = Date.now();
     this.timers = new Set();
@@ -110,6 +111,16 @@ export class Room {
     this.touch();
   }
 
+  /** Regelerweiterungen setzen (nur vor dem Spielstart). */
+  setVariants(raw) {
+    if (this.started) {
+      throw new RoomError('already_started', 'Das Spiel läuft bereits.');
+    }
+    this.variants = normalizeVariants(raw);
+    this.touch();
+    return this.variants;
+  }
+
   start(options = {}) {
     if (this.started) {
       throw new RoomError('already_started', 'Das Spiel läuft bereits.');
@@ -123,6 +134,7 @@ export class Room {
     this.game = new WizardGame({
       playerIds: this.players.map((p) => p.id),
       startDealerIndex: Math.floor(Math.random() * this.players.length),
+      variants: this.variants,
       ...options,
     });
     this.game.start();
@@ -138,6 +150,7 @@ export class Room {
       hostId: this.hostId,
       minPlayers: MIN_PLAYERS,
       maxPlayers: MAX_PLAYERS,
+      variants: { ...this.variants },
       players: this.players.map((p) => ({
         id: p.id,
         name: p.name,

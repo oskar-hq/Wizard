@@ -123,6 +123,62 @@ export function scoreFor(bid, tricks) {
   return -10 * Math.abs(bid - tricks);
 }
 
+// ------------------------------------------------------- Regelerweiterungen
+
+/**
+ * Abschaltbare Regelvarianten. Alle sind standardmäßig aus – ohne sie gilt
+ * exakt das Grundspiel.
+ *
+ * - `avoidTricks`  „Nur keine Stiche!“: Es wird nichts angesagt. Jeder Stich
+ *                  zählt einen Strafpunkt, am Ende gewinnt die niedrigste
+ *                  Punktzahl.
+ * - `plusMinusOne` „Plus/minus Eins“: Die Summe aller Ansagen darf nicht der
+ *                  Stichzahl der Runde entsprechen. Der Geber sagt zuletzt an
+ *                  und darf die passende Zahl deshalb nicht wählen.
+ * - `hiddenBids`   „Verdeckte Ansage“: Alle sagen gleichzeitig und geheim an;
+ *                  aufgedeckt wird erst, wenn alle abgegeben haben.
+ */
+export const DEFAULT_VARIANTS = Object.freeze({
+  avoidTricks: false,
+  plusMinusOne: false,
+  hiddenBids: false,
+});
+
+export const VARIANT_KEYS = Object.keys(DEFAULT_VARIANTS);
+
+/**
+ * Bringt eine Variantenauswahl in eine widerspruchsfreie Form.
+ * Ohne Ansage gibt es weder „Plus/minus Eins“ noch eine verdeckte Ansage;
+ * und bei gleichzeitiger Ansage lässt sich „Plus/minus Eins“ nicht erzwingen.
+ */
+export function normalizeVariants(raw = {}) {
+  const variants = {};
+  for (const key of VARIANT_KEYS) variants[key] = Boolean(raw?.[key]);
+  if (variants.avoidTricks) {
+    variants.plusMinusOne = false;
+    variants.hiddenBids = false;
+  } else if (variants.hiddenBids) {
+    variants.plusMinusOne = false;
+  }
+  return variants;
+}
+
+/** Rundenpunkte unter Berücksichtigung der aktiven Varianten. */
+export function scoreRoundFor(bid, tricks, variants = DEFAULT_VARIANTS) {
+  if (variants.avoidTricks) return tricks; // ein Strafpunkt je Stich
+  return scoreFor(bid, tricks);
+}
+
+/** Gewinnt in dieser Variante die niedrigste Punktzahl? */
+export function lowestWins(variants = DEFAULT_VARIANTS) {
+  return Boolean(variants.avoidTricks);
+}
+
+/** Wird in dieser Variante überhaupt angesagt? */
+export function hasBidding(variants = DEFAULT_VARIANTS) {
+  return !variants.avoidTricks;
+}
+
 /** Ist die Ansage `bid` in Runde `round` zulässig (0 … round)? */
 export function isValidBid(bid, round) {
   return Number.isInteger(bid) && bid >= 0 && bid <= round;

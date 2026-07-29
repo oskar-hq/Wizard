@@ -2,6 +2,7 @@
 
 import { $, el, escapeHtml, fill, show } from './dom.js';
 import { SUIT_LABELS, SUIT_ORDER, SUIT_RACES, cardName, renderCard, suitSwatch } from './cards.js';
+import { activeBadges } from './variants.js';
 
 const nameOf = (state, playerId) =>
   state.players.find((p) => p.id === playerId)?.name ?? 'Jemand';
@@ -25,6 +26,11 @@ export function renderTable(ctx) {
 function renderTopbar(state) {
   $('pill-round').textContent = `Runde ${state.round}/${state.roundsTotal}`;
   $('pill-code').textContent = state.code;
+
+  const badges = activeBadges(state.variants);
+  const pill = $('pill-variants');
+  pill.hidden = badges.length === 0;
+  pill.textContent = badges.join(' · ');
 
   const slot = $('trump-slot');
   const label = el('span.trump-label', {}, [
@@ -50,14 +56,28 @@ function renderPlayers(state, meId) {
       if (isTurn) classes.push('is-turn');
       if (!player.connected) classes.push('is-offline');
 
-      const bidClass =
-        player.bid === null
+      const avoid = state.variants?.avoidTricks;
+      const bidClass = avoid
+        ? player.tricks > 0
+          ? '.is-over'
+          : '.is-done'
+        : player.bid === null
           ? ''
           : player.tricks === player.bid
             ? '.is-done'
             : player.tricks > player.bid
               ? '.is-over'
               : '';
+
+      // „Nur keine Stiche!“: es gibt keine Ansage, nur gefangene Stiche.
+      // Verdeckte Ansage: bis zum Aufdecken sieht man nur, wer schon abgegeben hat.
+      const bidHtml = avoid
+        ? `<b>${player.tricks}</b> ${player.tricks === 1 ? 'Stich' : 'Stiche'}`
+        : player.bid === null
+          ? state.bidsHidden && player.hasBid
+            ? '<b>✓</b> verdeckt angesagt'
+            : '<b>–</b> Ansage offen'
+          : `<b>${player.tricks}</b> / ${player.bid} Stiche`;
 
       return el(`div.${classes.join('.')}`, {}, [
         el('div.pchip-top', {}, [
@@ -68,15 +88,12 @@ function renderPlayers(state, meId) {
         ]),
         el('div.pchip-stats', {}, [
           el(`span.pchip-bid${bidClass}`, {
-            title: 'Stiche / Ansage',
-            html:
-              player.bid === null
-                ? '<b>–</b> Ansage offen'
-                : `<b>${player.tricks}</b> / ${player.bid} Stiche`,
+            title: avoid ? 'Gewonnene Stiche' : 'Stiche / Ansage',
+            html: bidHtml,
           }),
           el('span.pchip-score', {
-            text: `${player.score > 0 ? '+' : ''}${player.score}`,
-            title: 'Gesamtpunkte',
+            text: avoid ? String(player.score) : `${player.score > 0 ? '+' : ''}${player.score}`,
+            title: avoid ? 'Strafpunkte (weniger ist besser)' : 'Gesamtpunkte',
           }),
         ]),
       ]);
@@ -110,6 +127,16 @@ function renderHint(state, meId) {
   }
 
   if (state.phase === 'bidding') {
+    // Verdeckte Ansage: alle gleichzeitig, niemand ist „am Zug“.
+    if (state.bidsHidden) {
+      const missing = state.players.filter((p) => !p.hasBid);
+      hint.innerHTML = missing.some((p) => p.id === meId)
+        ? '<b>Verdeckte Ansage:</b> Gib deine Zahl ab – niemand sieht sie.'
+        : `Verdeckte Ansage – warte auf ${missing
+            .map((p) => `<b>${escapeHtml(p.name)}</b>`)
+            .join(', ')} …`;
+      return;
+    }
     const open = state.players.filter((p) => p.bid === null).length;
     const sum = state.players.reduce((total, p) => total + (p.bid ?? 0), 0);
     const info = `Bisher angesagt: ${sum} von ${state.round} Stichen · noch ${open} offen`;
@@ -132,8 +159,9 @@ function renderHint(state, meId) {
       : state.trick.length
         ? ' Es muss nichts bedient werden.'
         : '';
+    const goal = state.variants?.avoidTricks ? ' <small>Bloß keinen Stich machen!</small>' : '';
     hint.innerHTML = isMe
-      ? `<b>Du bist am Zug.</b>${lead}`
+      ? `<b>Du bist am Zug.</b>${lead}${goal}`
       : `<b>${safeName(state, state.turnPlayerId)}</b> ist am Zug.${lead}`;
     return;
   }
@@ -176,25 +204,36 @@ function renderHand(ctx) {
 // ------------------------------------------------------------------ Dialoge
 
 function renderBidOverlay(ctx) {
-  const { state, meId, onBid } = ctx;
-  const active = state.phase === 'bidding' && state.turnPlayerId === meId;
+  const { state, onBid, canBid, forbiddenBid } = ctx;
+  const active = state.phase === 'bidding' && canBid;
   show($('overlay-bid'), active);
   if (!active) return;
 
-  const sum = state.players.reduce((total, p) => total + (p.bid ?? 0), 0);
-  $('bid-sub').textContent =
-    `Runde ${state.round}: ${state.round} ${state.round === 1 ? 'Stich' : 'Stiche'} zu vergeben. ` +
-    `Bisher angesagt: ${sum}.`;
+  const stichwort = state.round === 1 ? 'Stich' : 'Stiche';
+  $('bid-sub').textContent = state.bidsHidden
+    ? `Runde ${state.round}: ${state.round} ${stichwort} zu vergeben. Deine Ansage bleibt geheim, ` +
+      'bis alle abgegeben haben.'
+    : `Runde ${state.round}: ${state.round} ${stichwort} zu vergeben. Bisher angesagt: ` +
+      `${state.players.reduce((total, p) => total + (p.bid ?? 0), 0)}.`;
+
+  $('bid-note').textContent =
+    forbiddenBid === null || forbiddenBid === undefined
+      ? ''
+      : `„Plus/minus Eins“: ${forbiddenBid} ist gesperrt – die Summe der Ansagen darf nicht ` +
+        `${state.round} ergeben.`;
 
   fill(
     $('bid-grid'),
-    Array.from({ length: state.round + 1 }, (_, value) =>
-      el('button.bid-button', {
+    Array.from({ length: state.round + 1 }, (_, value) => {
+      const blocked = value === forbiddenBid;
+      return el(`button.bid-button${blocked ? '.is-blocked' : ''}`, {
         type: 'button',
         text: String(value),
-        onclick: () => onBid(value),
-      }),
-    ),
+        disabled: blocked,
+        title: blocked ? 'Durch „Plus/minus Eins“ gesperrt' : null,
+        onclick: blocked ? null : () => onBid(value),
+      });
+    }),
   );
 }
 
@@ -216,17 +255,20 @@ function renderTrumpOverlay(ctx) {
 }
 
 /** Wertungstabelle einer einzelnen Runde. */
-export function renderRoundOverlay(payload, meId) {
+export function renderRoundOverlay(payload, meId, variants = {}) {
+  const avoid = Boolean(variants.avoidTricks);
   $('round-title').textContent = `Wertung nach Runde ${payload.round}`;
-  const rows = [...payload.entries].sort((a, b) => b.total - a.total);
+  const rows = [...payload.entries].sort((a, b) =>
+    avoid ? a.total - b.total : b.total - a.total,
+  );
 
   fill($('round-table'), [
     el('thead', {}, [
       el('tr', {}, [
         el('th', { text: 'Spieler' }),
-        el('th', { text: 'Ansage' }),
+        el('th', { text: avoid ? '' : 'Ansage' }),
         el('th', { text: 'Stiche' }),
-        el('th', { text: 'Runde' }),
+        el('th', { text: avoid ? 'Strafp.' : 'Runde' }),
         el('th', { text: 'Gesamt' }),
       ]),
     ]),
@@ -236,10 +278,10 @@ export function renderRoundOverlay(payload, meId) {
       rows.map((entry) =>
         el(`tr${entry.playerId === meId ? '.is-you' : ''}`, {}, [
           el('td', { text: entry.name }),
-          el('td', { text: String(entry.bid) }),
+          el('td', { text: avoid ? '–' : String(entry.bid) }),
           el('td', { text: String(entry.tricks) }),
-          el(`td.delta--${entry.delta >= 0 ? 'plus' : 'minus'}`, {
-            text: `${entry.delta > 0 ? '+' : ''}${entry.delta}`,
+          el(`td.delta--${avoid ? (entry.delta > 0 ? 'minus' : 'plus') : entry.delta >= 0 ? 'plus' : 'minus'}`, {
+            text: avoid ? `+${entry.delta}` : `${entry.delta > 0 ? '+' : ''}${entry.delta}`,
           }),
           el('td', { text: String(entry.total) }),
         ]),
@@ -251,15 +293,16 @@ export function renderRoundOverlay(payload, meId) {
 
 /** Laufender Gesamtstand (jederzeit über den Punkte-Button erreichbar). */
 export function renderScoreboard(state, meId) {
-  const rows = [...state.players].sort((a, b) => b.score - a.score);
+  const avoid = Boolean(state.variants?.avoidTricks);
+  const rows = [...state.players].sort((a, b) => (avoid ? a.score - b.score : b.score - a.score));
   fill($('scores-table'), [
     el('thead', {}, [
       el('tr', {}, [
         el('th', { text: '#' }),
         el('th', { text: 'Spieler' }),
-        el('th', { text: 'Ansage' }),
+        el('th', { text: avoid ? '' : 'Ansage' }),
         el('th', { text: 'Stiche' }),
-        el('th', { text: 'Punkte' }),
+        el('th', { text: avoid ? 'Strafpunkte' : 'Punkte' }),
       ]),
     ]),
     el(
@@ -269,7 +312,9 @@ export function renderScoreboard(state, meId) {
         el(`tr${player.id === meId ? '.is-you' : ''}`, {}, [
           el('td', { text: String(index + 1) }),
           el('td', { text: player.name }),
-          el('td', { text: player.bid === null ? '–' : String(player.bid) }),
+          el('td', {
+            text: avoid || player.bid === null ? '–' : String(player.bid),
+          }),
           el('td', { text: String(player.tricks) }),
           el('td', { text: String(player.score) }),
         ]),
@@ -280,7 +325,11 @@ export function renderScoreboard(state, meId) {
 }
 
 /** Endstand. */
-export function renderGameOver(payload, meId) {
+export function renderGameOver(payload, meId, variants = {}) {
+  const avoid = Boolean(variants.avoidTricks);
+  $('gameover-sub').textContent = avoid
+    ? 'Variante „Nur keine Stiche!“ – die wenigsten Strafpunkte gewinnen.'
+    : 'Die höchste Punktzahl gewinnt.';
   fill(
     $('ranking'),
     payload.ranking.map((entry, index) =>
@@ -289,7 +338,9 @@ export function renderGameOver(payload, meId) {
         el('span.name', {
           text: entry.playerId === meId ? `${entry.name} (du)` : entry.name,
         }),
-        el('span.points', { text: `${entry.score} Punkte` }),
+        el('span.points', {
+          text: avoid ? `${entry.score} Strafpunkte` : `${entry.score} Punkte`,
+        }),
         index === 0 ? el('span.tag.tag--host', { text: 'Sieg' }) : null,
       ]),
     ),

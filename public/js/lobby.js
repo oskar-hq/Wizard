@@ -1,8 +1,9 @@
 /** Warteraum-Ansicht. */
 
 import { $, el, fill } from './dom.js';
+import { renderVariantList } from './variants.js';
 
-export function renderLobby(room, meId) {
+export function renderLobby(room, meId, { onToggleVariant } = {}) {
   $('lobby-code').textContent = room.code;
 
   fill(
@@ -27,6 +28,14 @@ export function renderLobby(room, meId) {
     missing > 0
       ? `Noch ${missing} ${missing === 1 ? 'Spieler' : 'Spieler'} – teile den Code mit deinen Freunden.`
       : `${count} Spieler bereit. Es kann losgehen!`;
+
+  renderVariantList($('variant-list'), room.variants ?? {}, {
+    editable: isHost,
+    onToggle: onToggleVariant,
+  });
+  $('variants-note').textContent = isHost
+    ? 'Ohne Häkchen gilt das Grundspiel.'
+    : 'Nur der Host kann die Regeln ändern.';
 
   const startButton = $('btn-start');
   startButton.disabled = !isHost || missing > 0;

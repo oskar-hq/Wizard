@@ -25,6 +25,8 @@ deutschsprachig, ohne Build-Step, als einzelner Docker-Container betreibbar und
 - **Ein Port für alles:** HTTP und WebSocket laufen über denselben Host/Port
   (`/ws`) – genau das, was ein Cloudflare Tunnel braucht.
 - **Responsive:** funktioniert am Desktop und am Handy.
+- **Regelerweiterungen:** drei Varianten lassen sich im Warteraum einzeln
+  zuschalten (siehe unten) – ohne Häkchen gilt exakt das Grundspiel.
 
 ---
 
@@ -61,8 +63,9 @@ npm test
 Abgedeckt sind u. a.: Deckaufbau (60 Karten), Rundenzahl je Spielerzahl,
 gültige Ansagen, Bedienpflicht, Zauberer-/Narr-Sonderfälle, Stichauflösung,
 Wertung, Trumpfbestimmung inkl. Trumpfwahl durch den Geber, die letzte Runde
-ohne Trumpf, vollständige Spieldurchläufe mit 3–6 Spielern sowie Lobby,
-Zug-Validierung, Handkarten-Privatheit und Reconnect über echte WebSockets.
+ohne Trumpf, vollständige Spieldurchläufe mit 3–6 Spielern, alle drei
+Regelerweiterungen sowie Lobby, Zug-Validierung, Handkarten-Privatheit und
+Reconnect über echte WebSockets.
 
 ---
 
@@ -167,8 +170,8 @@ Wenn das `{"ok":true,…}` liefert, funktioniert auch der WebSocket – er läuf
 
 1. **Startseite:** Namen eingeben → *Raum erstellen* (liefert einen 4-stelligen
    Code) oder *Raum beitreten* per Code.
-2. **Warteraum:** Alle Anwesenden werden gelistet. Ab 3 Spielern kann der Host
-   starten (max. 6).
+2. **Warteraum:** Alle Anwesenden werden gelistet. Der Host kann
+   Regelerweiterungen zuschalten und ab 3 Spielern starten (max. 6).
 3. **Runde:** Karten werden gegeben, die Trumpfkarte aufgedeckt (bei einem
    Zauberer wählt der Geber die Farbe), dann sagt jeder reihum seine Stiche an,
    danach werden die Stiche gespielt.
@@ -201,6 +204,44 @@ außer der Stich besteht nur aus Narren, dann gewinnt der erste.
 **Punkte:** Ansage getroffen → `20 + 10 × Stiche`. Daneben →
 `−10 × |Ansage − Stiche|`. Punkte werden über alle Runden aufsummiert (auch
 negativ). Nach der letzten Runde gewinnt die höchste Gesamtpunktzahl.
+
+---
+
+## Regelerweiterungen
+
+Der Host schaltet sie im Warteraum per Häkchen zu; alle im Raum sehen die
+Auswahl sofort. Während einer laufenden Partie sind sie gesperrt. Ohne Häkchen
+gilt exakt das Grundspiel.
+
+### „Nur keine Stiche!“
+
+Das Vermeidungsspiel: Es wird **nicht angesagt** – alle stehen automatisch auf
+null und versuchen, möglichst gar keinen Stich zu bekommen. Jeder Stich bringt
+**einen Strafpunkt**. Gespielt wird sonst genau wie sonst (Bedienpflicht,
+Trumpf, Zauberer und Narren gelten unverändert; bei aufgedecktem Zauberer wählt
+der Geber weiterhin die Trumpffarbe). Nach der letzten Runde gewinnt, wer die
+**wenigsten** Punkte hat – die Oberfläche dreht Wertung, Tabellen und Endstand
+entsprechend um.
+
+### „Plus/minus Eins“
+
+Die Summe aller Ansagen darf **nicht** der Stichzahl der Runde entsprechen. Da
+der Geber zuletzt ansagt, trifft die Einschränkung ihn: Die eine passende Zahl
+ist im Ansage-Dialog gesperrt und wird serverseitig abgelehnt. Es geht also nie
+glatt auf – mindestens einer muss danebenliegen.
+
+### „Verdeckte Ansage“
+
+Alle sagen **gleichzeitig und geheim** an, in beliebiger Reihenfolge. Bis alle
+abgegeben haben, sieht man nur, *wer* schon angesagt hat – die Zahlen bleiben
+serverseitig unter Verschluss und werden erst gemeinsam aufgedeckt. Die eigene
+Ansage sieht man natürlich jederzeit.
+
+**Kombinationen:** „Nur keine Stiche!“ kennt keine Ansage und schaltet die
+beiden anderen Varianten deshalb ab. „Plus/minus Eins“ lässt sich bei
+gleichzeitiger Ansage nicht erzwingen und ist zusammen mit „Verdeckte Ansage“
+gesperrt. Der Server normalisiert die Auswahl selbst – widersprüchliche
+Kombinationen können also gar nicht entstehen.
 
 ---
 
@@ -237,6 +278,7 @@ Alle Nachrichten sind JSON-Objekte mit einem `type`-Feld.
 | `join_room`      | `code`, `name`             |
 | `reconnect`      | `code`, `playerId`, `token`|
 | `leave_room`     | –                          |
+| `set_variants`   | `variants` (nur Host)      |
 | `start_game`     | – (nur Host)               |
 | `choose_trump`   | `suit`                     |
 | `make_bid`       | `value`                    |
@@ -249,9 +291,9 @@ Alle Nachrichten sind JSON-Objekte mit einem `type`-Feld.
 | Nachricht      | Inhalt                                                       |
 | -------------- | ------------------------------------------------------------ |
 | `joined`       | `code`, `playerId`, `token`, `name`, ggf. `reconnected`      |
-| `room_state`   | Lobby: Spielerliste, Host, verbunden/getrennt                |
+| `room_state`   | Lobby: Spielerliste, Host, verbunden/getrennt, Varianten     |
 | `game_state`   | öffentlicher Tischzustand (nie fremde Handkarten)            |
-| `your_hand`    | eigene Karten + Liste der aktuell legal spielbaren `cardId`s |
+| `your_hand`    | eigene Karten, legale `cardId`s, eigene Ansage, gesperrte Zahl |
 | `trick_won`    | Gewinner und Karten des Stichs                               |
 | `round_scored` | Ansage, Stiche, Rundenpunkte und Gesamtstand pro Spieler     |
 | `round_started`| neue Rundennummer                                            |
@@ -263,8 +305,6 @@ Alle Nachrichten sind JSON-Objekte mit einem `type`-Feld.
 
 ## Später vorgemerkt (bewusst noch nicht gebaut)
 
-- Regelvarianten als abschaltbare Optionen: „Plus/minus Eins“ (die Summe der
-  Ansagen darf nicht der Stichzahl entsprechen) und verdeckte/geheime Ansage.
 - Persistente Statistik über `better-sqlite3` (Spielhistorie, Bestenliste).
 - Zug-Timer als optionale Einstellung.
 

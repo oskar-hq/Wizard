@@ -175,7 +175,10 @@ test('Jeder Client sieht nur seine eigene Hand', async (t) => {
 
   const { clients } = await makeRoom(url, ['Anna', 'Ben', 'Cem']);
   clients[0].send({ type: 'start_game' });
-  for (const client of clients) await client.waitFor('your_hand');
+  for (const client of clients) {
+    await client.waitFor((m) => m.type === 'game_state' && m.state.round === 1);
+    await client.waitFor((m) => m.type === 'your_hand' && m.hand.length === 1);
+  }
 
   const hands = clients.map((c) => c.hand.map((card) => card.id));
   for (const hand of hands) assert.equal(hand.length, 1);
@@ -321,6 +324,226 @@ test('Reconnect stellt Platz und Hand wieder her', async (t) => {
   );
 
   back.close();
+  for (const client of clients) client.close();
+});
+
+test('Regelerweiterungen: nur der Host schaltet um, alle sehen den Stand', async (t) => {
+  const { url, close } = await startServer();
+  t.after(close);
+
+  const { clients } = await makeRoom(url, ['Anna', 'Ben', 'Cem']);
+  const [anna, ben] = clients;
+
+  assert.deepEqual(anna.last('room_state').room.variants, {
+    avoidTricks: false,
+    plusMinusOne: false,
+    hiddenBids: false,
+  });
+
+  ben.send({ type: 'set_variants', variants: { plusMinusOne: true } });
+  assert.equal((await ben.waitFor('error')).code, 'not_host');
+
+  anna.send({ type: 'set_variants', variants: { plusMinusOne: true } });
+  const room = (
+    await ben.waitFor((m) => m.type === 'room_state' && m.room.variants.plusMinusOne, {
+      fresh: true,
+    })
+  ).room;
+  assert.deepEqual(room.variants, {
+    avoidTricks: false,
+    plusMinusOne: true,
+    hiddenBids: false,
+  });
+
+  // Widersprüchliche Auswahl wird serverseitig aufgelöst.
+  anna.send({ type: 'set_variants', variants: { avoidTricks: true, plusMinusOne: true } });
+  const resolved = (
+    await anna.waitFor((m) => m.type === 'room_state' && m.room.variants.avoidTricks, {
+      fresh: true,
+    })
+  ).room;
+  assert.deepEqual(resolved.variants, {
+    avoidTricks: true,
+    plusMinusOne: false,
+    hiddenBids: false,
+  });
+
+  for (const client of clients) client.close();
+});
+
+test('Variante „Nur keine Stiche!“ über WebSockets: keine Ansage, Strafpunkte', async (t) => {
+  const { url, close } = await startServer();
+  t.after(close);
+
+  const { clients } = await makeRoom(url, ['Anna', 'Ben', 'Cem']);
+  const lookup = byId(clients);
+  clients[0].send({ type: 'set_variants', variants: { avoidTricks: true } });
+  await clients[0].waitFor((m) => m.type === 'room_state' && m.room.variants.avoidTricks, {
+    fresh: true,
+  });
+  clients[0].send({ type: 'start_game' });
+  for (const client of clients) await client.waitFor('your_hand');
+
+  let state = clients[0].state;
+  if (state.phase === 'choosing_trump') {
+    lookup.get(state.dealerId).send({ type: 'choose_trump', suit: 'red' });
+    state = (
+      await clients[0].waitFor((m) => m.type === 'game_state' && m.state.phase === 'playing', {
+        fresh: true,
+      })
+    ).state;
+  }
+
+  assert.equal(state.phase, 'playing', 'Ansagephase entfällt');
+  assert.equal(state.lowestWins, true);
+  for (const player of state.players) assert.equal(player.bid, 0);
+  for (const client of clients) {
+    assert.equal(client.last('your_hand').canBid, false);
+  }
+
+  for (let i = 0; i < 3; i++) {
+    const current = lookup.get(clients[0].state.turnPlayerId);
+    const yourHand = await current.waitFor((m) => m.type === 'your_hand' && m.legal.length > 0);
+    current.send({ type: 'play_card', cardId: yourHand.legal[0] });
+    if (i < 2) {
+      await clients[0].waitFor(
+        (m) => m.type === 'game_state' && m.state.trick.length === i + 1,
+        { fresh: true },
+      );
+    }
+  }
+
+  const trickWon = await clients[0].waitFor('trick_won');
+  const scored = await clients[0].waitFor('round_scored');
+  for (const entry of scored.entries) {
+    assert.equal(entry.delta, entry.playerId === trickWon.winnerId ? 1 : 0);
+    assert.equal(entry.total, entry.delta);
+  }
+
+  for (const client of clients) client.close();
+});
+
+test('Variante „Verdeckte Ansage“ über WebSockets: geheim bis alle abgegeben haben', async (t) => {
+  const { url, close } = await startServer();
+  t.after(close);
+
+  const { clients } = await makeRoom(url, ['Anna', 'Ben', 'Cem']);
+  const lookup = byId(clients);
+  clients[0].send({ type: 'set_variants', variants: { hiddenBids: true } });
+  await clients[0].waitFor((m) => m.type === 'room_state' && m.room.variants.hiddenBids, {
+    fresh: true,
+  });
+  clients[0].send({ type: 'start_game' });
+  for (const client of clients) await client.waitFor('your_hand');
+
+  let state = clients[0].state;
+  if (state.phase === 'choosing_trump') {
+    lookup.get(state.dealerId).send({ type: 'choose_trump', suit: 'red' });
+    state = (
+      await clients[0].waitFor((m) => m.type === 'game_state' && m.state.phase === 'bidding', {
+        fresh: true,
+      })
+    ).state;
+  }
+
+  assert.equal(state.phase, 'bidding');
+  assert.equal(state.turnPlayerId, null, 'niemand ist einzeln am Zug');
+  assert.equal(state.bidsHidden, true);
+  // Auf jeden Client einzeln warten – nach einer Trumpfwahl gibt es einen
+  // zweiten Broadcast, der bei den anderen noch unterwegs sein kann.
+  for (const client of clients) {
+    const own = await client.waitFor((m) => m.type === 'your_hand' && m.canBid === true);
+    assert.equal(own.canBid, true);
+    assert.equal(own.yourBid, null);
+  }
+
+  // Reihenfolge egal – hier sagt der letzte Client zuerst an.
+  clients[2].send({ type: 'make_bid', value: 1 });
+  const afterFirst = (
+    await clients[0].waitFor(
+      (m) => m.type === 'game_state' && m.state.players.some((p) => p.hasBid),
+      { fresh: true },
+    )
+  ).state;
+  for (const player of afterFirst.players) {
+    assert.equal(player.bid, null, 'fremde Ansagen bleiben geheim');
+  }
+  assert.equal(afterFirst.bidsTotal, null);
+  const own = await clients[2].waitFor((m) => m.type === 'your_hand' && m.yourBid !== null);
+  assert.equal(own.yourBid, 1, 'die eigene Ansage sieht man');
+  assert.equal(own.canBid, false);
+
+  clients[2].send({ type: 'make_bid', value: 0 });
+  assert.equal((await clients[2].waitFor('error')).code, 'already_bid');
+
+  clients[0].send({ type: 'make_bid', value: 0 });
+  clients[1].send({ type: 'make_bid', value: 0 });
+  const open = (
+    await clients[0].waitFor((m) => m.type === 'game_state' && m.state.phase === 'playing', {
+      fresh: true,
+    })
+  ).state;
+  assert.equal(open.bidsHidden, false);
+  assert.equal(open.bidsTotal, 1);
+  assert.equal(open.players.find((p) => p.id === clients[2].session.playerId).bid, 1);
+
+  for (const client of clients) client.close();
+});
+
+test('Variante „Plus/minus Eins“ über WebSockets: der Geber muss ausweichen', async (t) => {
+  const { url, close } = await startServer();
+  t.after(close);
+
+  const { clients } = await makeRoom(url, ['Anna', 'Ben', 'Cem']);
+  const lookup = byId(clients);
+  clients[0].send({ type: 'set_variants', variants: { plusMinusOne: true } });
+  await clients[0].waitFor((m) => m.type === 'room_state' && m.room.variants.plusMinusOne, {
+    fresh: true,
+  });
+  clients[0].send({ type: 'start_game' });
+  for (const client of clients) await client.waitFor('your_hand');
+
+  let state = clients[0].state;
+  if (state.phase === 'choosing_trump') {
+    lookup.get(state.dealerId).send({ type: 'choose_trump', suit: 'red' });
+    state = (
+      await clients[0].waitFor((m) => m.type === 'game_state' && m.state.phase === 'bidding', {
+        fresh: true,
+      })
+    ).state;
+  }
+
+  // Runde 1: die ersten beiden sagen 0 an, der Geber darf dann nicht 1 sagen.
+  for (let i = 0; i < 2; i++) {
+    const current = lookup.get(clients[0].state.turnPlayerId);
+    const before = clients[0].state.players.filter((p) => p.bid !== null).length;
+    current.send({ type: 'make_bid', value: 0 });
+    await clients[0].waitFor(
+      (m) =>
+        m.type === 'game_state' &&
+        m.state.players.filter((p) => p.bid !== null).length > before,
+      { fresh: true },
+    );
+  }
+
+  const dealer = lookup.get(clients[0].state.dealerId);
+  assert.equal(clients[0].state.turnPlayerId, clients[0].state.dealerId);
+  const dealerHand = await dealer.waitFor(
+    (m) => m.type === 'your_hand' && m.forbiddenBid !== null,
+  );
+  assert.equal(dealerHand.forbiddenBid, 1, 'die 1 ist gesperrt');
+
+  dealer.send({ type: 'make_bid', value: 1 });
+  const error = await dealer.waitFor((m) => m.type === 'error' && m.code === 'forbidden_bid');
+  assert.match(error.message, /Plus\/minus Eins/);
+  assert.equal(clients[0].state.phase, 'bidding');
+
+  dealer.send({ type: 'make_bid', value: 0 });
+  await clients[0].waitFor((m) => m.type === 'game_state' && m.state.phase === 'playing', {
+    fresh: true,
+  });
+  assert.equal(clients[0].state.bidsTotal, 0);
+
   for (const client of clients) client.close();
 });
 

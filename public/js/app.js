@@ -9,6 +9,7 @@ import { $, joinNames, show, toast } from './dom.js';
 import { Net } from './net.js';
 import { lastName, session } from './store.js';
 import { renderLobby } from './lobby.js';
+import { renderVariantDocs } from './variants.js';
 import { renderGameOver, renderRoundOverlay, renderScoreboard, renderTable } from './table.js';
 
 const net = new Net();
@@ -20,6 +21,9 @@ const app = {
   state: null,
   hand: [],
   legal: [],
+  canBid: false,
+  forbiddenBid: null,
+  yourBid: null,
   screen: 'home',
 };
 
@@ -53,7 +57,13 @@ function render() {
     // statt für einen Wimpernschlag die Lobby zu zeigen.
     if (app.room.started) return;
     showScreen('lobby');
-    renderLobby(app.room, app.meId);
+    renderLobby(app.room, app.meId, {
+      onToggleVariant: (key, value) =>
+        net.send({
+          type: 'set_variants',
+          variants: { ...(app.room.variants ?? {}), [key]: value },
+        }),
+    });
     return;
   }
 
@@ -66,6 +76,9 @@ function render() {
     onPlay: (card) => net.send({ type: 'play_card', cardId: card.id }),
     onBid: (value) => net.send({ type: 'make_bid', value }),
     onTrump: (suit) => net.send({ type: 'choose_trump', suit }),
+    canBid: app.canBid,
+    forbiddenBid: app.forbiddenBid,
+    yourBid: app.yourBid,
   });
 
   // Rundenwertung
@@ -73,6 +86,7 @@ function render() {
     renderRoundOverlay(
       { round: app.state.roundResult.round, entries: withNames(app.state.roundResult.entries) },
       app.meId,
+      app.state.variants,
     );
     const ready = new Set(app.state.readyForNext ?? []);
     const waiting = app.state.players
@@ -88,7 +102,7 @@ function render() {
 
   // Endstand
   if (app.state.phase === 'game_over' && app.state.ranking) {
-    renderGameOver({ ranking: withNames(app.state.ranking) }, app.meId);
+    renderGameOver({ ranking: withNames(app.state.ranking) }, app.meId, app.state.variants);
   } else {
     show($('overlay-gameover'), false);
   }
@@ -129,6 +143,9 @@ net.on('game_state', (message) => {
 net.on('your_hand', (message) => {
   app.hand = message.hand ?? [];
   app.legal = message.legal ?? [];
+  app.canBid = Boolean(message.canBid);
+  app.forbiddenBid = message.forbiddenBid ?? null;
+  app.yourBid = message.yourBid ?? null;
   render();
 });
 
@@ -144,17 +161,30 @@ net.on('trump_chosen', (message) => {
   }
 });
 
-net.on('left', () => {
+function resetSession() {
   session.clear();
-  Object.assign(app, { meId: null, code: null, room: null, state: null, hand: [], legal: [] });
+  Object.assign(app, {
+    meId: null,
+    code: null,
+    room: null,
+    state: null,
+    hand: [],
+    legal: [],
+    canBid: false,
+    forbiddenBid: null,
+    yourBid: null,
+  });
+}
+
+net.on('left', () => {
+  resetSession();
   render();
 });
 
 net.on('error', (message) => {
   toast(message.message ?? 'Fehler', 'error');
   if (['bad_token', 'no_such_room', 'not_in_room'].includes(message.code)) {
-    session.clear();
-    Object.assign(app, { meId: null, code: null, room: null, state: null, hand: [], legal: [] });
+    resetSession();
     render();
   }
 });
@@ -218,6 +248,8 @@ $('btn-copy-code').addEventListener('click', async () => {
     toast(`Raum-Code: ${code}`);
   }
 });
+
+renderVariantDocs($('rules-variants'));
 
 $('btn-scores').addEventListener('click', () => {
   if (app.state) renderScoreboard(app.state, app.meId);

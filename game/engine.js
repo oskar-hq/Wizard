@@ -24,8 +24,10 @@ import {
   isValidSuit,
   leadSuitOf,
   legalCards,
+  lowestWins,
+  normalizeVariants,
   roundsForPlayers,
-  scoreFor,
+  scoreRoundFor,
   trickWinnerIndex,
 } from './rules.js';
 
@@ -43,10 +45,11 @@ export class WizardGame {
    * @param {string[]} options.playerIds Sitzreihenfolge im Uhrzeigersinn
    * @param {number} [options.seed] Seed für den Mischalgorithmus
    * @param {number} [options.startDealerIndex] Geber der ersten Runde
+   * @param {object} [options.variants] Regelerweiterungen (siehe rules.js)
    * @param {(round: number) => object[]} [options.deckFor]
    *        Test-Hook: liefert ein fertig sortiertes 60-Karten-Deck pro Runde.
    */
-  constructor({ playerIds, seed, startDealerIndex = 0, deckFor } = {}) {
+  constructor({ playerIds, seed, startDealerIndex = 0, deckFor, variants } = {}) {
     if (!Array.isArray(playerIds)) {
       throw new GameError('invalid_players', 'Spielerliste fehlt.');
     }
@@ -60,6 +63,7 @@ export class WizardGame {
       throw new GameError('invalid_players', 'Spieler-IDs müssen eindeutig sein.');
     }
 
+    this.variants = normalizeVariants(variants);
     this.seed = seed ?? randomSeed();
     this.random = mulberry32(this.seed);
     this.deckFor = deckFor ?? (() => shuffle(createDeck(), this.random));
@@ -192,8 +196,37 @@ export class WizardGame {
   }
 
   startBidding() {
+    // Variante „Nur keine Stiche!“: Es wird nicht angesagt – jeder will null.
+    if (this.variants.avoidTricks) {
+      for (const player of this.players) player.bid = 0;
+      this.startPlaying();
+      return;
+    }
     this.phase = 'bidding';
+    // Verdeckte Ansage: alle gleichzeitig, also niemand „am Zug“.
+    this.turnIndex = this.variants.hiddenBids ? null : this.leftOf(this.dealerIndex);
+  }
+
+  startPlaying() {
+    this.phase = 'playing';
+    this.trickNumber = 1;
     this.turnIndex = this.leftOf(this.dealerIndex);
+  }
+
+  /**
+   * Variante „Plus/minus Eins“: Der letzte Ansager (der Geber) darf die Zahl
+   * nicht wählen, mit der die Summe aller Ansagen genau der Stichzahl der
+   * Runde entspricht.
+   *
+   * @returns {number|null} verbotene Ansage oder null
+   */
+  forbiddenBidFor(playerId) {
+    if (!this.variants.plusMinusOne || this.phase !== 'bidding') return null;
+    const open = this.players.filter((p) => p.bid === null);
+    if (open.length !== 1 || open[0].id !== playerId) return null;
+    const placed = this.players.reduce((sum, p) => sum + (p.bid ?? 0), 0);
+    const forbidden = this.round - placed;
+    return forbidden >= 0 && forbidden <= this.round ? forbidden : null;
   }
 
   /** Trumpfwahl des Gebers, wenn ein Zauberer aufgedeckt wurde. */
@@ -213,20 +246,37 @@ export class WizardGame {
   /** Ansage eines Spielers (0 … Rundennummer). */
   bid(playerId, value) {
     this.requirePhase('bidding');
-    this.requireTurn(playerId);
+    const player = this.player(playerId);
+
+    if (this.variants.hiddenBids) {
+      // Reihenfolge egal – aber jeder nur einmal.
+      if (player.bid !== null) {
+        throw new GameError('already_bid', 'Du hast bereits angesagt.');
+      }
+    } else {
+      this.requireTurn(playerId);
+    }
+
     if (!isValidBid(value, this.round)) {
       throw new GameError(
         'invalid_bid',
         `Die Ansage muss zwischen 0 und ${this.round} liegen.`,
       );
     }
-    this.player(playerId).bid = value;
+
+    const forbidden = this.forbiddenBidFor(playerId);
+    if (forbidden !== null && value === forbidden) {
+      throw new GameError(
+        'forbidden_bid',
+        `„Plus/minus Eins“: Die Summe der Ansagen darf nicht ${this.round} ergeben – ${value} ist nicht erlaubt.`,
+      );
+    }
+
+    player.bid = value;
 
     if (this.players.every((p) => p.bid !== null)) {
-      this.phase = 'playing';
-      this.trickNumber = 1;
-      this.turnIndex = this.leftOf(this.dealerIndex);
-    } else {
+      this.startPlaying();
+    } else if (!this.variants.hiddenBids) {
       this.turnIndex = this.leftOf(this.turnIndex);
     }
     return { type: 'bid_made', playerId, value };
@@ -303,7 +353,7 @@ export class WizardGame {
   /** Wertet die Runde und wechselt in die Phase 'round_end'. */
   scoreRound() {
     const entries = this.players.map((player) => {
-      const delta = scoreFor(player.bid, player.tricks);
+      const delta = scoreRoundFor(player.bid, player.tricks, this.variants);
       player.score += delta;
       return {
         playerId: player.id,
@@ -333,11 +383,15 @@ export class WizardGame {
     return { type: 'round_started', round: this.round };
   }
 
-  /** Endstand, absteigend sortiert. */
+  /**
+   * Endstand, bester Platz zuerst. In der Variante „Nur keine Stiche!“ gewinnt
+   * die niedrigste Punktzahl, sonst die höchste.
+   */
   ranking() {
+    const ascending = lowestWins(this.variants);
     return this.players
       .map((p) => ({ playerId: p.id, score: p.score }))
-      .sort((a, b) => b.score - a.score)
+      .sort((a, b) => (ascending ? a.score - b.score : b.score - a.score))
       .map((entry, index, all) => ({
         ...entry,
         rank: all.findIndex((e) => e.score === entry.score) + 1,
@@ -346,9 +400,18 @@ export class WizardGame {
 
   // ------------------------------------------------------------- Ausgaben
 
-  /** Der öffentliche Tischzustand – enthält NIEMALS fremde Handkarten. */
+  /**
+   * Der öffentliche Tischzustand – enthält NIEMALS fremde Handkarten.
+   * Bei verdeckter Ansage bleiben auch die Ansagen geheim, bis alle abgegeben
+   * haben; die eigene Ansage bekommt jeder über `bidOf()` mitgeteilt.
+   */
   publicState() {
+    const allBidsIn = this.players.every((p) => p.bid !== null);
+    const hideBids = this.variants.hiddenBids && this.phase === 'bidding' && !allBidsIn;
     return {
+      variants: { ...this.variants },
+      lowestWins: lowestWins(this.variants),
+      bidsHidden: hideBids,
       phase: this.phase,
       round: this.round,
       roundsTotal: this.roundsTotal,
@@ -363,11 +426,12 @@ export class WizardGame {
       trickResult: this.trickResult
         ? { winnerId: this.trickResult.winnerId, winningCardId: this.trickResult.winningCard.id }
         : null,
-      bidsTotal: this.players.reduce((sum, p) => sum + (p.bid ?? 0), 0),
-      allBidsIn: this.players.every((p) => p.bid !== null),
+      bidsTotal: hideBids ? null : this.players.reduce((sum, p) => sum + (p.bid ?? 0), 0),
+      allBidsIn,
       players: this.players.map((p) => ({
         id: p.id,
-        bid: p.bid,
+        bid: hideBids ? null : p.bid,
+        hasBid: p.bid !== null,
         tricks: p.tricks,
         score: p.score,
         handCount: p.hand.length,
@@ -380,6 +444,18 @@ export class WizardGame {
   /** Die eigene Hand eines Spielers (nur für ihn selbst). */
   handOf(playerId) {
     return this.player(playerId).hand.map((c) => ({ ...c }));
+  }
+
+  /** Die eigene Ansage – auch bei verdeckter Ansage sichtbar. */
+  bidOf(playerId) {
+    return this.player(playerId).bid;
+  }
+
+  /** Darf dieser Spieler gerade ansagen? */
+  canBid(playerId) {
+    if (this.phase !== 'bidding') return false;
+    if (this.variants.hiddenBids) return this.player(playerId).bid === null;
+    return this.turnPlayerId === playerId;
   }
 }
 

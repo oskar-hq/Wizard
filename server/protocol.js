@@ -115,6 +115,8 @@ export class GameHub {
         return this.reconnect(socket, message);
       case 'leave_room':
         return this.leaveRoom(socket);
+      case 'set_variants':
+        return this.setVariants(socket, message);
       case 'start_game':
         return this.startGame(socket);
       case 'choose_trump':
@@ -238,6 +240,16 @@ export class GameHub {
       this.store.delete(room.code);
       return;
     }
+    this.broadcast(room);
+  }
+
+  /** Regelerweiterungen umschalten – nur der Host, nur in der Lobby. */
+  setVariants(socket, message) {
+    const { room, player } = this.context(socket);
+    if (room.hostId !== player.id) {
+      throw new RoomError('not_host', 'Nur der Host kann die Regeln ändern.');
+    }
+    room.setVariants(message.variants);
     this.broadcast(room);
   }
 
@@ -381,6 +393,10 @@ export class GameHub {
           type: 'your_hand',
           hand: room.game.handOf(player.id),
           legal: room.game.legalCardsFor(player.id).map((c) => c.id),
+          // Auch bei verdeckter Ansage sieht jeder wenigstens seine eigene.
+          yourBid: room.game.bidOf(player.id),
+          canBid: room.game.canBid(player.id),
+          forbiddenBid: room.game.forbiddenBidFor(player.id),
         });
       }
       if (extraEvent) send(player.socket, extraEvent);

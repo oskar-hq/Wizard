@@ -86,14 +86,16 @@ export function renderCard(card, options = {}) {
     ...(as === 'button' ? { type: 'button', disabled: !playable } : {}),
   });
 
-  node.append(
-    el('span.card-corner.card-corner--tl', { html: glyphMarkup(variant) }),
-    el('span.card-corner.card-corner--br', { html: glyphMarkup(variant) }),
-  );
-
   if (card.kind === 'suit') {
-    node.append(el('span.card-value', { text: String(card.value) }));
+    // Farbkarten: Symbol in den Ecken, große Zahl in der Mitte.
+    node.append(
+      el('span.card-corner.card-corner--tl', { html: glyphMarkup(variant) }),
+      el('span.card-corner.card-corner--br', { html: glyphMarkup(variant) }),
+      el('span.card-value', { text: String(card.value) }),
+    );
   } else {
+    // Zauberer und Narr: großes Symbol plus Beschriftung – ohne Ecksymbole,
+    // damit sich auf kleinen Karten nichts überlagert.
     node.append(
       el('span.card-glyph', { html: glyphMarkup(variant) }),
       el('span.card-word', { text: card.kind === 'wizard' ? 'Zauberer' : 'Narr' }),

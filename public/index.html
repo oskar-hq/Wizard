@@ -77,6 +77,14 @@
         <p class="lobby-hint" id="lobby-hint">Warte auf Mitspieler …</p>
         <ul class="player-list" id="lobby-players"></ul>
 
+        <div class="variants">
+          <p class="eyebrow">Regelerweiterungen</p>
+          <p class="variants-note" id="variants-note">
+            Nur der Host kann die Regeln ändern.
+          </p>
+          <ul class="variant-list" id="variant-list"></ul>
+        </div>
+
         <button id="btn-start" class="button button--primary" disabled>Spiel starten</button>
         <button id="btn-leave" class="button button--ghost">Raum verlassen</button>
       </div>
@@ -88,6 +96,7 @@
         <div class="topbar-group">
           <span class="pill" id="pill-round">Runde 1/20</span>
           <span class="pill pill--muted" id="pill-code">––––</span>
+          <span class="pill pill--variant" id="pill-variants" hidden></span>
         </div>
         <div class="topbar-group">
           <div class="trump-slot" id="trump-slot"></div>
@@ -115,6 +124,7 @@
         <h2 class="sheet-title">Wie viele Stiche machst du?</h2>
         <p class="sheet-sub" id="bid-sub"></p>
         <div class="bid-grid" id="bid-grid"></div>
+        <p class="sheet-note" id="bid-note"></p>
       </div>
     </div>
 
@@ -146,6 +156,7 @@
     <div class="overlay" id="overlay-gameover" hidden>
       <div class="sheet sheet--wide">
         <h2 class="sheet-title">Spiel beendet</h2>
+        <p class="sheet-sub" id="gameover-sub"></p>
         <ol class="ranking" id="ranking"></ol>
         <button class="button button--primary" id="btn-home">Zurück zum Start</button>
       </div>
@@ -180,6 +191,12 @@
             <strong>−10 Punkte</strong> je Stich Abweichung. Nach der letzten Runde gewinnt, wer
             die meisten Punkte hat.
           </p>
+          <h3>Regelerweiterungen</h3>
+          <p>
+            Der Host kann im Warteraum zusätzliche Varianten zuschalten – ohne sie gilt exakt
+            das Grundspiel.
+          </p>
+          <div id="rules-variants"></div>
         </div>
         <button class="button" id="btn-close-rules">Schließen</button>
       </div>

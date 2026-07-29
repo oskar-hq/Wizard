@@ -400,6 +400,97 @@ input {
   box-shadow: none;
 }
 
+/* ------------------------------------------------- Regelerweiterungen */
+
+.variants {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+}
+
+.variants-note {
+  font-size: 0.78rem;
+  color: var(--text-faint);
+}
+
+.variant-list {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.variant-item {
+  border-radius: var(--radius-md);
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--border);
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.variant-item.is-active {
+  border-color: rgba(108, 140, 255, 0.55);
+  background: rgba(108, 140, 255, 0.1);
+}
+
+.variant-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 11px 13px;
+  cursor: pointer;
+}
+
+.variant-label:has(.variant-check:disabled) {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.variant-check {
+  width: 20px;
+  height: 20px;
+  margin: 1px 0 0;
+  flex: none;
+  accent-color: var(--accent);
+  cursor: inherit;
+}
+
+.variant-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.variant-name {
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+
+.variant-text {
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  line-height: 1.4;
+}
+
+.pill--variant {
+  background: rgba(108, 140, 255, 0.2);
+  color: #c3cfff;
+}
+
+.bid-button.is-blocked {
+  opacity: 0.3;
+  cursor: not-allowed;
+  border-style: dashed;
+}
+
+.bid-button.is-blocked:hover {
+  background: var(--surface-strong);
+  border-color: var(--border-strong);
+}
+
 /* -------------------------------------------------------------- Tisch */
 
 .screen--game {
@@ -427,6 +518,21 @@ input {
   align-items: center;
   gap: 8px;
   min-width: 0;
+}
+
+/* Links darf gescrollt werden, die Knöpfe rechts bleiben immer erreichbar. */
+.topbar-group:first-child {
+  flex: 1 1 auto;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.topbar-group:first-child::-webkit-scrollbar {
+  display: none;
+}
+
+.topbar-group:last-child {
+  flex: none;
 }
 
 .pill {
@@ -1015,6 +1121,15 @@ button.card.is-blocked {
   font-weight: 600;
 }
 
+/* Die eigene Zeile darf die Farbe von Plus/Minus nicht überschreiben. */
+.score-table tr td.delta--plus {
+  color: var(--good);
+}
+
+.score-table tr td.delta--minus {
+  color: var(--bad);
+}
+
 .delta--plus {
   color: var(--good);
 }
@@ -1207,6 +1322,11 @@ button.card.is-blocked {
   }
 
   #pill-code {
+    display: none;
+  }
+
+  /* Die Trumpfkarte spricht für sich – die Beschriftung kostet nur Platz. */
+  .trump-slot .trump-label {
     display: none;
   }
 
