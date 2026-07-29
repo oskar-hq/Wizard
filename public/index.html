@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0d1017" />
+    <meta name="description" content="Wizard – das Stichspiel online mit Freunden spielen." />
+    <title>Wizard Online</title>
+    <link rel="preload" href="fonts/space-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="css/style.css" />
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+  </head>
+  <body>
+    <div id="connection" class="connection" hidden>
+      <span class="connection-dot"></span><span id="connection-text">Verbinde …</span>
+    </div>
+
+    <!-- ------------------------------------------------------- Startseite -->
+    <section class="screen screen--center" id="screen-home">
+      <div class="hero">
+        <div class="hero-cards" aria-hidden="true">
+          <div class="hero-card hero-card--1"></div>
+          <div class="hero-card hero-card--2"></div>
+          <div class="hero-card hero-card--3"></div>
+        </div>
+        <h1 class="hero-title">Wizard</h1>
+        <p class="hero-subtitle">Das Stichspiel für 3 bis 6 Spieler – online mit deinen Freunden.</p>
+      </div>
+
+      <div class="panel">
+        <label class="field">
+          <span class="field-label">Dein Name</span>
+          <input
+            id="input-name"
+            class="input"
+            type="text"
+            maxlength="16"
+            autocomplete="nickname"
+            placeholder="z. B. Merlin"
+            spellcheck="false"
+          />
+        </label>
+
+        <button id="btn-create" class="button button--primary">Raum erstellen</button>
+
+        <div class="divider"><span>oder</span></div>
+
+        <label class="field">
+          <span class="field-label">Raum-Code</span>
+          <input
+            id="input-code"
+            class="input input--code"
+            type="text"
+            maxlength="4"
+            autocomplete="off"
+            autocapitalize="characters"
+            placeholder="ABCD"
+            spellcheck="false"
+          />
+        </label>
+        <button id="btn-join" class="button">Raum beitreten</button>
+        <button id="btn-rules-home" class="button button--ghost">Spielregeln</button>
+      </div>
+    </section>
+
+    <!-- --------------------------------------------------------- Warteraum -->
+    <section class="screen screen--center" id="screen-lobby" hidden>
+      <div class="panel panel--wide">
+        <div class="lobby-head">
+          <div>
+            <p class="eyebrow">Raum-Code</p>
+            <p class="room-code" id="lobby-code">––––</p>
+          </div>
+          <button id="btn-copy-code" class="button button--ghost button--small">Code kopieren</button>
+        </div>
+
+        <p class="lobby-hint" id="lobby-hint">Warte auf Mitspieler …</p>
+        <ul class="player-list" id="lobby-players"></ul>
+
+        <button id="btn-start" class="button button--primary" disabled>Spiel starten</button>
+        <button id="btn-leave" class="button button--ghost">Raum verlassen</button>
+      </div>
+    </section>
+
+    <!-- --------------------------------------------------------- Spieltisch -->
+    <section class="screen screen--game" id="screen-game" hidden>
+      <header class="topbar">
+        <div class="topbar-group">
+          <span class="pill" id="pill-round">Runde 1/20</span>
+          <span class="pill pill--muted" id="pill-code">––––</span>
+        </div>
+        <div class="topbar-group">
+          <div class="trump-slot" id="trump-slot"></div>
+          <button class="icon-button" id="btn-scores" title="Punktestand">Punkte</button>
+          <button class="icon-button" id="btn-rules-game" title="Regeln">Regeln</button>
+        </div>
+      </header>
+
+      <div class="players-strip" id="players-strip"></div>
+
+      <main class="table">
+        <div class="trick-area" id="trick-area"></div>
+        <p class="table-hint" id="table-hint"></p>
+      </main>
+
+      <footer class="hand-dock">
+        <p class="hand-label" id="hand-label">Deine Karten</p>
+        <div class="hand" id="hand"></div>
+      </footer>
+    </section>
+
+    <!-- ------------------------------------------------------------ Dialoge -->
+    <div class="overlay" id="overlay-bid" hidden>
+      <div class="sheet">
+        <h2 class="sheet-title">Wie viele Stiche machst du?</h2>
+        <p class="sheet-sub" id="bid-sub"></p>
+        <div class="bid-grid" id="bid-grid"></div>
+      </div>
+    </div>
+
+    <div class="overlay" id="overlay-trump" hidden>
+      <div class="sheet">
+        <h2 class="sheet-title">Du bestimmst den Trumpf</h2>
+        <p class="sheet-sub">Ein Zauberer wurde aufgedeckt – wähle die Trumpffarbe für diese Runde.</p>
+        <div class="trump-grid" id="trump-grid"></div>
+      </div>
+    </div>
+
+    <div class="overlay" id="overlay-round" hidden>
+      <div class="sheet sheet--wide">
+        <h2 class="sheet-title" id="round-title">Rundenwertung</h2>
+        <div class="table-scroll"><table class="score-table" id="round-table"></table></div>
+        <button class="button button--primary" id="btn-continue">Weiter</button>
+        <p class="sheet-note" id="round-waiting"></p>
+      </div>
+    </div>
+
+    <div class="overlay" id="overlay-scores" hidden>
+      <div class="sheet sheet--wide">
+        <h2 class="sheet-title">Punktestand</h2>
+        <div class="table-scroll"><table class="score-table" id="scores-table"></table></div>
+        <button class="button" id="btn-close-scores">Schließen</button>
+      </div>
+    </div>
+
+    <div class="overlay" id="overlay-gameover" hidden>
+      <div class="sheet sheet--wide">
+        <h2 class="sheet-title">Spiel beendet</h2>
+        <ol class="ranking" id="ranking"></ol>
+        <button class="button button--primary" id="btn-home">Zurück zum Start</button>
+      </div>
+    </div>
+
+    <div class="overlay" id="overlay-rules" hidden>
+      <div class="sheet sheet--wide sheet--scroll">
+        <h2 class="sheet-title">Spielregeln in Kürze</h2>
+        <div class="rules">
+          <h3>Das Deck</h3>
+          <p>
+            60 Karten: vier Farben – Blau (Menschen), Rot (Zwerge), Grün (Elfen), Gelb (Riesen) –
+            mit je den Werten 1 bis 13, dazu 4 Zauberer und 4 Narren.
+          </p>
+          <h3>Ablauf einer Runde</h3>
+          <p>
+            In Runde <em>r</em> bekommt jeder <em>r</em> Karten. Die oberste Karte des Reststapels
+            wird aufgedeckt und bestimmt den Trumpf: Farbkarte → diese Farbe, Narr → kein Trumpf,
+            Zauberer → der Geber wählt die Farbe. In der letzten Runde gibt es keinen Trumpf.
+            Danach sagt jeder – beginnend links vom Geber – an, wie viele Stiche er macht.
+          </p>
+          <h3>Stiche</h3>
+          <p>
+            Die angespielte Farbe muss bedient werden, wenn man sie hat. Zauberer und Narren dürfen
+            <strong>immer</strong> gespielt werden. Es gewinnt der erste Zauberer im Stich, sonst
+            der höchste Trumpf, sonst die höchste Karte der angespielten Farbe. Narren verlieren
+            immer – außer der Stich besteht nur aus Narren, dann gewinnt der erste.
+          </p>
+          <h3>Punkte</h3>
+          <p>
+            Ansage getroffen: <strong>20 Punkte + 10 pro Stich</strong>. Danebengelegen:
+            <strong>−10 Punkte</strong> je Stich Abweichung. Nach der letzten Runde gewinnt, wer
+            die meisten Punkte hat.
+          </p>
+        </div>
+        <button class="button" id="btn-close-rules">Schließen</button>
+      </div>
+    </div>
+
+    <div class="toast-host" id="toast-host"></div>
+
+    <script type="module" src="js/app.js"></script>
+  </body>
+</html>
