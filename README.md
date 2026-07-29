@@ -8,6 +8,24 @@ deutschsprachig, ohne Build-Step, als einzelner Docker-Container betreibbar und
 > (CSS/SVG). Es werden keine Illustrationen oder Grafiken des Originalverlags
 > verwendet.
 
+## Kartengestaltung
+
+Das Deck ist vollständig im Browser gezeichnet – kein einziges Bild, nur CSS
+und SVG-Pfade. Jede Farbe hat eine helle Kartenfläche, einen kräftigen
+Zeichenton und einen dunkleren Akzent:
+
+- **1** – ein großes Volks-Symbol im gestrichelten Zierring
+- **2–10** – die klassische Symbolanordnung, untere Hälfte auf dem Kopf
+- **11, 12, 13** – abstrakte Figuren aus geraden Linien, Kreisen und Dreiecken:
+  Späher mit Federbusch und Speer, Hüterin mit Zackenreif, Fürst mit Krone,
+  Spitzbart und Schwert
+- **Zauberer** – Spitzhut mit Funken, langer Bart; **Narr** – Schellenkappe und
+  Zackenkragen
+- **Rückseite** – geometrisches Streumuster für den verdeckten Nachziehstapel
+
+Die Volks-Symbole: Gestalt (Menschen/Blau), Schmiedehammer (Zwerge/Rot),
+Blatt (Elfen/Grün), Bergmassiv (Riesen/Gelb).
+
 ---
 
 ## Auf einen Blick

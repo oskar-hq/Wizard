@@ -1,7 +1,15 @@
 /** Spieltisch-Ansicht: Kopfzeile, Spielerleiste, Stich, Hand und Dialoge. */
 
 import { $, el, escapeHtml, fill, show } from './dom.js';
-import { SUIT_LABELS, SUIT_ORDER, SUIT_RACES, cardName, renderCard, suitSwatch } from './cards.js';
+import {
+  SUIT_LABELS,
+  SUIT_ORDER,
+  SUIT_RACES,
+  cardName,
+  renderCard,
+  renderCardBack,
+  suitSwatch,
+} from './cards.js';
 import { activeBadges } from './variants.js';
 
 const nameOf = (state, playerId) =>
@@ -41,7 +49,7 @@ function renderTopbar(state) {
   ]);
 
   if (state.trumpCard) {
-    fill(slot, [renderCard(state.trumpCard), label]);
+    fill(slot, [renderCard(state.trumpCard, { mini: true }), label]);
   } else {
     fill(slot, [label]);
   }
@@ -103,8 +111,16 @@ function renderPlayers(state, meId) {
 
 function renderTrick(state) {
   const winnerId = state.trickResult?.winnerId ?? null;
+  const area = $('trick-area');
+
+  // Solange nichts ausgespielt ist, liegt der Nachziehstapel in der Mitte.
+  if (!state.trick.length) {
+    fill(area, [renderDeck(state)]);
+    return;
+  }
+
   fill(
-    $('trick-area'),
+    area,
     state.trick.map((play) =>
       el(`div.trick-slot${winnerId === play.playerId ? '.is-winner' : ''}`, {}, [
         renderCard(play.card),
@@ -112,6 +128,42 @@ function renderTrick(state) {
       ]),
     ),
   );
+}
+
+/** Verdeckter Reststapel mit der aufgedeckten Trumpfkarte daneben. */
+function renderDeck(state) {
+  const pile = el('div.deck-pile', {}, [renderCardBack(), renderCardBack(), renderCardBack()]);
+  const parts = [];
+
+  if (state.stackSize > 0) {
+    parts.push(
+      el('div.deck-slot', {}, [
+        pile,
+        el('span.deck-caption', {
+          text: `${state.stackSize} ${state.stackSize === 1 ? 'Karte' : 'Karten'}`,
+        }),
+      ]),
+    );
+  }
+
+  if (state.trumpCard) {
+    parts.push(
+      el('div.deck-slot', {}, [
+        renderCard(state.trumpCard),
+        el('span.deck-caption', {
+          text: state.trumpSuit ? `Trumpf: ${SUIT_LABELS[state.trumpSuit]}` : 'kein Trumpf',
+        }),
+      ]),
+    );
+  } else {
+    parts.push(
+      el('div.deck-slot', {}, [
+        el('span.deck-caption', { text: 'Letzte Runde – kein Trumpf' }),
+      ]),
+    );
+  }
+
+  return el('div.deck-row', {}, parts);
 }
 
 function renderHint(state, meId) {

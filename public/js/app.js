@@ -8,6 +8,7 @@
 import { $, joinNames, show, toast } from './dom.js';
 import { Net } from './net.js';
 import { lastName, session } from './store.js';
+import { renderCard } from './cards.js';
 import { renderLobby } from './lobby.js';
 import { renderVariantDocs } from './variants.js';
 import { renderGameOver, renderRoundOverlay, renderScoreboard, renderTable } from './table.js';
@@ -277,6 +278,19 @@ document.addEventListener('visibilitychange', () => {
 });
 
 // ----------------------------------------------------------------- Start
+
+// Drei Beispielkarten auf der Startseite – zeigt gleich, wie das Deck aussieht.
+$('hero-cards').replaceChildren(
+  ...[
+    { id: 'red-13', kind: 'suit', suit: 'red', value: 13 },
+    { id: 'wizard-1', kind: 'wizard', suit: null, value: null },
+    { id: 'green-11', kind: 'suit', suit: 'green', value: 11 },
+  ].map((card, index) => {
+    const node = renderCard(card);
+    node.classList.add(`hero-card--${index + 1}`);
+    return node;
+  }),
+);
 
 $('input-name').value = lastName.get();
 const saved = session.load();
