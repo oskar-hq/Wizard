@@ -40,6 +40,7 @@ function showScreen(name) {
     for (const id of ['overlay-bid', 'overlay-trump', 'overlay-round', 'overlay-scores']) {
       show($(id), false);
     }
+    document.body.classList.remove('hand-above-dialog');
   }
 }
 

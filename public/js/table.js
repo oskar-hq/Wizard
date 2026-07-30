@@ -27,8 +27,25 @@ export function renderTable(ctx) {
   renderTrick(state);
   renderHint(state, ctx.meId);
   renderHand(ctx);
-  renderBidOverlay(ctx);
-  renderTrumpOverlay(ctx);
+
+  // Bei Ansage und Trumpfwahl muss die eigene Hand lesbar bleiben – beides
+  // sind Entscheidungen, die man nur mit Blick auf die Karten treffen kann.
+  const bidOpen = renderBidOverlay(ctx);
+  const trumpOpen = renderTrumpOverlay(ctx);
+  document.body.classList.toggle('hand-above-dialog', bidOpen || trumpOpen);
+  syncHandHeight();
+}
+
+/**
+ * Merkt die Höhe der Kartenablage in `--hand-h`. Damit können sich Ansage- und
+ * Trumpfdialog direkt darüber setzen, statt die Hand zu verdecken.
+ */
+function syncHandHeight() {
+  requestAnimationFrame(() => {
+    const dock = $('hand-dock');
+    if (!dock) return;
+    document.documentElement.style.setProperty('--hand-h', `${dock.offsetHeight}px`);
+  });
 }
 
 function renderTopbar(state) {
@@ -259,7 +276,7 @@ function renderBidOverlay(ctx) {
   const { state, onBid, canBid, forbiddenBid } = ctx;
   const active = state.phase === 'bidding' && canBid;
   show($('overlay-bid'), active);
-  if (!active) return;
+  if (!active) return false;
 
   const stichwort = state.round === 1 ? 'Stich' : 'Stiche';
   $('bid-sub').textContent = state.bidsHidden
@@ -287,13 +304,14 @@ function renderBidOverlay(ctx) {
       });
     }),
   );
+  return true;
 }
 
 function renderTrumpOverlay(ctx) {
   const { state, meId, onTrump } = ctx;
   const active = state.phase === 'choosing_trump' && state.dealerId === meId;
   show($('overlay-trump'), active);
-  if (!active) return;
+  if (!active) return false;
 
   fill(
     $('trump-grid'),
@@ -304,6 +322,7 @@ function renderTrumpOverlay(ctx) {
       ]),
     ),
   );
+  return true;
 }
 
 /** Wertungstabelle einer einzelnen Runde. */
