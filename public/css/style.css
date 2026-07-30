@@ -988,6 +988,8 @@ input {
   display: block;
   padding: 0;
   font-family: inherit;
+  /* Erlaubt Größenabfragen der Karte selbst (siehe .card-title). */
+  container-type: inline-size;
 }
 
 /* Mittelgrafik */
@@ -1309,6 +1311,194 @@ button.card.is-blocked {
   --face: #f8f5ee;
   --ink: #16181d;
   --accent: #8b8b8b;
+}
+
+/* „Klassisch“: gemalte Anmutung – Himmel als CSS-Verlauf, Silhouetten im SVG. */
+.card.deck--classic {
+  background:
+    radial-gradient(circle at 50% 74%, var(--glow-soft) 0%, transparent 58%),
+    linear-gradient(180deg, var(--sky-1) 0%, var(--sky-2) 100%);
+  border-color: rgba(0, 0, 0, 0.55);
+  color: var(--frame);
+}
+
+.card-scene {
+  position: absolute;
+  inset: 0;
+  display: block;
+  pointer-events: none;
+}
+
+.card-scene .card-art-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.cl-sil {
+  fill: var(--sil);
+}
+
+/* Die Figur steht eine Spur dunkler vor der Landschaft. */
+.cl-scene > .cl-sil,
+.cl-scene > circle.cl-sil,
+.cl-scene > path.cl-sil {
+  fill: var(--sil-fg, var(--sil));
+}
+
+/* Zwei weiche Ringe als Lichthof hinter der Figur. */
+.cl-halo {
+  fill: var(--glow);
+  opacity: 0.14;
+}
+
+.cl-star {
+  fill: var(--frame);
+  opacity: 0.9;
+}
+
+.cl-glow {
+  fill: var(--glow);
+  opacity: 0.5;
+}
+
+.cl-frame {
+  fill: none;
+  stroke: var(--frame);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+
+.cl-frame-inner {
+  fill: none;
+  stroke: var(--frame);
+  stroke-width: 0.7;
+  opacity: 0.55;
+}
+
+.cl-rune {
+  color: var(--rune);
+  opacity: 0.55;
+}
+
+.cl-back-rune {
+  color: var(--frame);
+}
+
+/* Eckzahlen im klassischen Design: groß, hell, mit Schatten. */
+.card.deck--classic .card-index {
+  flex-direction: row;
+  align-items: center;
+  gap: calc(var(--card-w) * 0.03);
+}
+
+.card.deck--classic .card-index b {
+  color: #fff;
+  font-size: calc(var(--card-w) * 0.25);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+}
+
+.card.deck--classic .card-index-glyph {
+  width: calc(var(--card-w) * 0.13);
+  height: calc(var(--card-w) * 0.13);
+  fill: none;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.8));
+}
+
+.card-title {
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  top: 26%;
+  text-align: center;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-style: italic;
+  font-size: calc(var(--card-w) * 0.115);
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.95), 0 0 8px rgba(0, 0, 0, 0.7);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* Auf kleinen Karten wäre die Beschriftung nur noch ein Fleck. */
+@container (max-width: 88px) {
+  .card-title {
+    display: none;
+  }
+}
+
+/* Farbwelten des klassischen Designs */
+.card.deck--classic.card--yellow {
+  --sky-1: #efb45c;
+  --sky-2: #6f3a10;
+  --glow: #ffe9b0;
+  --glow-soft: rgba(255, 214, 128, 0.55);
+  --sil: #351c07;
+  --frame: #f4dca6;
+  --rune: #fff2d0;
+  --sil-fg: #1e0f03;
+}
+.card.deck--classic.card--red {
+  --sky-1: #bb3a2c;
+  --sky-2: #35080a;
+  --glow: #ffb066;
+  --glow-soft: rgba(255, 128, 64, 0.5);
+  --sil: #200304;
+  --frame: #f2c894;
+  --rune: #ffddc0;
+  --sil-fg: #140102;
+}
+.card.deck--classic.card--green {
+  --sky-1: #79c08c;
+  --sky-2: #0f3520;
+  --glow: #e2fbc8;
+  --glow-soft: rgba(190, 245, 170, 0.45);
+  --sil: #051d0e;
+  --frame: #e0f0bc;
+  --rune: #f2ffe0;
+  --sil-fg: #02120a;
+}
+.card.deck--classic.card--blue {
+  --sky-1: #4a80c2;
+  --sky-2: #0a1b3c;
+  --glow: #d6e8ff;
+  --glow-soft: rgba(150, 195, 255, 0.45);
+  --sil: #050d20;
+  --frame: #d2e2f7;
+  --rune: #eaf4ff;
+  --sil-fg: #020817;
+}
+.card.deck--classic.card--wizard {
+  --sky-1: #7053ad;
+  --sky-2: #170c30;
+  --glow: #ffd9f2;
+  --glow-soft: rgba(214, 150, 255, 0.5);
+  --sil: #0e0620;
+  --frame: #f3dba6;
+  --rune: #ffeaff;
+  --sil-fg: #080318;
+}
+.card.deck--classic.card--jester {
+  --sky-1: #8b909d;
+  --sky-2: #20232b;
+  --glow: #e9ecf2;
+  --glow-soft: rgba(220, 226, 238, 0.4);
+  --sil: #12141a;
+  --frame: #e2e6ed;
+  --rune: #f4f6fa;
+  --sil-fg: #0b0d11;
+}
+.card.deck--classic.card--back {
+  --sky-1: #33281b;
+  --sky-2: #0c0906;
+  --glow: #7a5423;
+  --glow-soft: rgba(140, 96, 40, 0.5);
+  --sil: #0c0906;
+  --frame: #dcb877;
+  --rune: #dcb877;
 }
 
 /* Auswahl der Designs */

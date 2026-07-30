@@ -30,6 +30,13 @@ export const DECKS = [
     name: 'Schwarz-Rot',
     text: 'Nur Schwarz und Rot wie ein klassisches Blatt: Rot und Gelb rot, Blau und Grün schwarz.',
   },
+  {
+    id: 'classic',
+    name: 'Klassisch',
+    text:
+      'Gemalte Anmutung: Landschaft je Volk, Figuren als Silhouette, Goldrahmen, ' +
+      'Runen und große Eckzahlen. Eigene Umsetzung, keine Originalbilder.',
+  },
 ];
 
 export const DEFAULT_DECK = 'line';

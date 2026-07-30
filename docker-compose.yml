@@ -1,8 +1,9 @@
 services:
   wizard:
     build: .
-    image: wizard-online:latest
-    container_name: wizard-online
+    image: ${IMAGE_NAME:-wizard-online}:${IMAGE_TAG:-latest}
+    # Überschreibbar, damit sich eine Testinstanz parallel betreiben lässt.
+    container_name: ${CONTAINER_NAME:-wizard-online}
     restart: unless-stopped
     environment:
       # Port im Container UND nach außen – einfach hier ändern.

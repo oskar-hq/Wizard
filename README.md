@@ -12,7 +12,7 @@ deutschsprachig, ohne Build-Step, als einzelner Docker-Container betreibbar und
 
 Das Deck ist vollständig im Browser gezeichnet – kein einziges Bild, nur CSS
 und SVG-Pfade. Über *Kartendesign* (Startseite oder Kopfzeile im Spiel) stehen
-vier Stile zur Wahl; die Einstellung gilt nur für den eigenen Browser, jeder am
+fünf Stile zur Wahl; die Einstellung gilt nur für den eigenen Browser, jeder am
 Tisch kann ein anderes Design fahren:
 
 | Design | Optik |
@@ -21,8 +21,26 @@ Tisch kann ein anderes Design fahren:
 | **Vollfarbe** | Kräftige Farbflächen, große Zahl, Symbol als Wasserzeichen |
 | **Nacht** | Dunkle Karten mit leuchtenden Linien |
 | **Schwarz-Rot** | Nur Schwarz und Rot wie ein klassisches Blatt (Rot/Gelb rot, Blau/Grün schwarz) |
+| **Klassisch** | Gemalte Anmutung: Landschaft je Volk, Figuren als Silhouette, Goldrahmen, Runen, große Eckzahlen |
 
-Der Aufbau der Karten ist in allen Designs gleich:
+### Zum Design „Klassisch“
+
+Es greift die *Anmutung* klassischer Fantasy-Spielkarten auf – Landschaft,
+Silhouette, Zierrahmen, Runenzeichen und prominente Eckzahlen – ist aber eine
+vollständig eigene Umsetzung. Jede Karte besteht aus einem CSS-Himmelsverlauf
+und selbst gesetzten SVG-Formen:
+
+- **Blau/Menschen** – Steinkreis unter Mondlicht (Gruß an die Rahmengeschichte)
+- **Rot/Zwerge** – glühende Vulkankämme
+- **Grün/Elfen** – Nadelwald in Dämmerung
+- **Gelb/Riesen** – Bergmassiv vor tiefstehender Sonne
+- **Figurenkarten** – Silhouetten mit Lichthof: *der Späher*, *die Hüterin*,
+  *der Fürst*, *der Zauberer*, *der Narr*
+- **Rückseite** – achtstrahliger Stern im Goldmedaillon
+
+Illustrationen des Originalspiels werden weder verwendet noch nachgezeichnet.
+
+Der Aufbau der Karten ist in den übrigen Designs gleich:
 
 - **1** – ein großes Volks-Symbol im gestrichelten Zierring
 - **2–10** – die klassische Symbolanordnung, untere Hälfte auf dem Kopf
@@ -61,8 +79,8 @@ Blatt (Elfen/Grün), Bergmassiv (Riesen/Gelb).
   spielen selbst. Damit geht es schon ab einem Menschen los.
 - **Abbruch jederzeit:** Der Host kann eine laufende Partie beenden – alle landen
   wieder im Warteraum.
-- **Vier Kartendesigns:** Linien, Vollfarbe, Nacht und Schwarz-Rot, umschaltbar
-  pro Spieler.
+- **Fünf Kartendesigns:** Linien, Vollfarbe, Nacht, Schwarz-Rot und Klassisch,
+  umschaltbar pro Spieler.
 
 ---
 
@@ -204,6 +222,106 @@ Wenn das `{"ok":true,…}` liefert, funktioniert auch der WebSocket – er läuf
 
 ---
 
+## (d) Update einspielen, ohne die laufende Installation zu zerstören
+
+Zwei Punkte vorweg, weil beides beim Umstellen relevant ist:
+
+- **Der Spielzustand liegt im Arbeitsspeicher.** Jeder Container-Neustart
+  beendet laufende Partien. Also dann umschalten, wenn niemand spielt.
+- **Die statischen Dateien werden ohne Cache-Dauer ausgeliefert** (nur mit
+  ETag). Nach einem Update genügt für die Mitspieler ein normales Neuladen –
+  es hängt kein altes JavaScript stundenlang im Browser-Cache.
+
+### Variante A: parallel testen, dann umschalten (empfohlen)
+
+Die alte Installation bleibt dabei komplett unberührt und läuft weiter.
+
+```bash
+# 1. Neuen Stand in ein SEPARATES Verzeichnis holen
+cd ~
+git clone -b claude/wizard-online-multiplayer-7squ9z <REPO-URL> wizard-neu
+cd wizard-neu
+
+# 2. Auf einem zweiten Port und unter eigenem Namen starten
+PORT=3001 CONTAINER_NAME=wizard-test IMAGE_TAG=test \
+  docker compose -p wizard-test up -d --build
+
+curl -s localhost:3001/healthz     # → {"ok":true,...}
+```
+
+Im Cloudflare Tunnel einen **zweiten** Public Hostname anlegen, z. B.
+`wizard-test.example.com` → `http://localhost:3001`. Damit lässt sich die neue
+Version in Ruhe ausprobieren, während unter der alten Adresse weitergespielt
+werden kann.
+
+Wenn alles passt, umschalten:
+
+```bash
+# Alte Instanz stoppen (nur wenn niemand spielt)
+cd ~/wizard-online && docker compose down
+
+# Testinstanz stoppen und die neue Version auf den Originalport bringen
+cd ~/wizard-neu
+docker compose -p wizard-test down
+PORT=3000 docker compose up -d --build
+docker compose logs -f
+```
+
+Danach den Test-Hostname im Tunnel wieder entfernen. **Zurück** geht es
+jederzeit mit:
+
+```bash
+cd ~/wizard-neu && docker compose down
+cd ~/wizard-online && docker compose up -d          # alter Stand, alter Code
+```
+
+### Variante B: im vorhandenen Verzeichnis aktualisieren (schnell)
+
+```bash
+cd ~/wizard-online
+
+# Rückfahrkarte: aktuellen Stand als Image und Commit festhalten
+docker image tag wizard-online:latest wizard-online:backup
+git rev-parse HEAD > /tmp/wizard-alter-commit.txt
+
+git fetch origin
+git checkout claude/wizard-online-multiplayer-7squ9z
+git pull --ff-only
+
+docker compose up -d --build
+docker compose logs -f
+curl -s localhost:3000/healthz
+```
+
+Falls etwas nicht stimmt:
+
+```bash
+cd ~/wizard-online
+git checkout "$(cat /tmp/wizard-alter-commit.txt)"
+docker compose up -d --build
+```
+
+oder direkt das gesicherte Image, ohne Neubau:
+
+```bash
+docker compose down
+docker run -d --name wizard-online --restart unless-stopped \
+  -e PORT=3000 -p 127.0.0.1:3000:3000 wizard-online:backup
+```
+
+### Kurze Abnahmeliste nach dem Update
+
+```bash
+curl -s localhost:3000/healthz          # Server lebt
+docker compose logs --tail=30           # keine Fehler beim Start
+npm test                                # optional, direkt im Repo
+```
+
+Im Browser: Startseite lädt, *Kartendesign* zeigt fünf Stile, Raum erstellen,
+zwei Bots dazusetzen, starten – dann läuft alles Wesentliche.
+
+---
+
 ## Spielablauf
 
 1. **Startseite:** Namen eingeben → *Raum erstellen* (liefert einen 4-stelligen
@@ -330,6 +448,7 @@ public/
   css/style.css  Optik inkl. selbst gezeichneter Karten
   js/            app.js, net.js, table.js, lobby.js, cards.js, decks.js,
                  variants.js, store.js, dom.js
+                 (cards.js enthält alle fünf Kartendesigns)
   fonts/         Space Grotesk (SIL Open Font License 1.1), lokal eingebunden
 test/          Engine- und Server-Tests (node --test)
 ```

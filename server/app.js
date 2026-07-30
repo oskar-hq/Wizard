@@ -24,10 +24,16 @@ export function createServer({ log = () => {}, staticDir = PUBLIC_DIR, hub: hubO
   app.disable('x-powered-by');
   app.set('trust proxy', true);
 
+  // Bewusst ohne Cache-Dauer: Dateinamen tragen keine Versionskennung, also
+  // sollen Browser bei jedem Aufruf kurz nachfragen (ETag → 304). Nach einem
+  // Update genügt damit ein normales Neuladen, statt dass alte JS-Dateien
+  // stundenlang im Cache hängen.
   app.use(
     express.static(staticDir, {
       extensions: ['html'],
-      maxAge: process.env.NODE_ENV === 'production' ? '1h' : 0,
+      etag: true,
+      lastModified: true,
+      maxAge: 0,
     }),
   );
 
