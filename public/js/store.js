@@ -6,6 +6,7 @@
 const SESSION_KEY = 'wizard.session';
 const NAME_KEY = 'wizard.name';
 const DECK_KEY = 'wizard.deck';
+const TABLE_KEY = 'wizard.table';
 
 const safeStorage = (() => {
   try {
@@ -51,4 +52,10 @@ export const lastName = {
 export const deckStyle = {
   get: () => safeStorage.getItem(DECK_KEY) ?? 'line',
   set: (id) => safeStorage.setItem(DECK_KEY, id),
+};
+
+/** Gewählter Spieltisch-Hintergrund – ebenfalls nur für einen selbst. */
+export const tableStyle = {
+  get: () => safeStorage.getItem(TABLE_KEY) ?? 'night',
+  set: (id) => safeStorage.setItem(TABLE_KEY, id),
 };

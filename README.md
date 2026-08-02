@@ -54,6 +54,29 @@ Der Aufbau der Karten ist in den übrigen Designs gleich:
 Die Volks-Symbole: Gestalt (Menschen/Blau), Schmiedehammer (Zwerge/Rot),
 Blatt (Elfen/Grün), Bergmassiv (Riesen/Gelb).
 
+## Spieltische
+
+Unter *Aussehen* lässt sich neben dem Kartendesign auch der Hintergrund wählen.
+Beides ist frei kombinierbar und gilt – wie das Kartendesign – nur für den
+eigenen Browser.
+
+| Tisch | Optik |
+| ----- | ----- |
+| **Nachtblau** (Standard) | Ruhiger dunkelblauer Verlauf, lenkt am wenigsten ab |
+| **Casino-Filz** | Tiefgrünes Filztuch unter einem Lichtkegel, Rand abgedunkelt |
+| **Alter Holztisch** | Dunkle Bretter mit Maserung und Fugen, warm von oben beleuchtet |
+| **Strand** | Abendlicher Sand mit Meer und tiefstehender Sonne am Horizont |
+| **Zaubererturm** | Violette Nacht mit Sternenfeld |
+| **Kaminzimmer** | Dunkles Leder mit Feuerschein von unten links |
+
+Auch die Tische sind reine Farbverläufe – Filzgewebe, Holzmaserung, Ledernarbung
+und Sandkörnung entstehen aus sich wiederholenden Verläufen, das Sternenfeld aus
+sechs Ebenen mit teilerfremden Kachelmaßen. Es wird nichts nachgeladen.
+
+Damit die helle Schrift überall lesbar bleibt, sind alle Tische bewusst dunkel
+gehalten; helle Motive wie Strand und Holz bekommen zusätzlich eine
+Randabdunklung, und die Texte auf dem Tisch tragen einen leichten Schatten.
+
 ---
 
 ## Auf einen Blick
@@ -79,8 +102,8 @@ Blatt (Elfen/Grün), Bergmassiv (Riesen/Gelb).
   spielen selbst. Damit geht es schon ab einem Menschen los.
 - **Abbruch jederzeit:** Der Host kann eine laufende Partie beenden – alle landen
   wieder im Warteraum.
-- **Fünf Kartendesigns:** Linien, Vollfarbe, Nacht, Schwarz-Rot und Klassisch,
-  umschaltbar pro Spieler.
+- **Fünf Kartendesigns und sechs Spieltische:** frei kombinierbar und pro
+  Spieler umschaltbar – alles aus CSS/SVG, keine Bilddateien.
 
 ---
 
@@ -317,8 +340,9 @@ docker compose logs --tail=30           # keine Fehler beim Start
 npm test                                # optional, direkt im Repo
 ```
 
-Im Browser: Startseite lädt, *Kartendesign* zeigt fünf Stile, Raum erstellen,
-zwei Bots dazusetzen, starten – dann läuft alles Wesentliche.
+Im Browser: Startseite lädt, *Aussehen* zeigt fünf Kartendesigns und sechs
+Spieltische, Raum erstellen, zwei Bots dazusetzen, starten – dann läuft alles
+Wesentliche.
 
 ---
 
@@ -447,8 +471,9 @@ public/
   index.html     Alle Ansichten (Start, Lobby, Tisch, Dialoge)
   css/style.css  Optik inkl. selbst gezeichneter Karten
   js/            app.js, net.js, table.js, lobby.js, cards.js, decks.js,
-                 variants.js, store.js, dom.js
-                 (cards.js enthält alle fünf Kartendesigns)
+                 tables.js, variants.js, store.js, dom.js
+                 (cards.js enthält alle fünf Kartendesigns,
+                  tables.js die sechs Spieltisch-Hintergründe)
   fonts/         Space Grotesk (SIL Open Font License 1.1), lokal eingebunden
 test/          Engine- und Server-Tests (node --test)
 ```

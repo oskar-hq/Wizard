@@ -81,14 +81,143 @@ body {
   margin: 0;
   font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   color: var(--text);
-  background: var(--bg);
-  background-image:
-    radial-gradient(80rem 40rem at 15% -10%, var(--bg-glow-1) 0%, transparent 60%),
-    radial-gradient(60rem 40rem at 95% 10%, var(--bg-glow-2) 0%, transparent 55%);
-  background-attachment: fixed;
+  background-color: var(--bg);
+  min-height: 100dvh;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   overscroll-behavior: none;
+}
+
+/* =========================================================== Spieltische
+
+   Wählbare Hintergründe, alle aus Farbverläufen gebaut – keine Bilddateien,
+   nichts nachzuladen. Die Maße sind in Prozent gehalten, damit dieselben
+   Regeln auch für die kleinen Vorschaukacheln in der Auswahl greifen.
+
+   Jeder Tisch bleibt bewusst dunkel genug, damit die helle Schrift der
+   Oberfläche überall lesbar bleibt; helle Motive bekommen dafür eine
+   Randabdunklung.
+   ===================================================================== */
+
+.table--night {
+  background-color: #0b0d13;
+  background-image:
+    radial-gradient(120% 70% at 15% -10%, #1b2a4a 0%, transparent 60%),
+    radial-gradient(90% 60% at 95% 8%, #2a1b3d 0%, transparent 55%);
+}
+
+.table--casino {
+  background-color: #0c3520;
+  background-image:
+    /* Lichtkegel von oben */
+    radial-gradient(90% 65% at 50% -12%, rgba(255, 244, 214, 0.2) 0%, transparent 62%),
+    /* Randabdunklung */
+    radial-gradient(115% 95% at 50% 45%, transparent 32%, rgba(0, 0, 0, 0.58) 100%),
+    /* Filzgewebe */
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.016) 0 2px, transparent 2px 4px),
+    repeating-linear-gradient(-45deg, rgba(0, 0, 0, 0.035) 0 2px, transparent 2px 4px),
+    linear-gradient(180deg, #10492c 0%, #092a19 100%);
+}
+
+.table--wood {
+  background-color: #3a2415;
+  background-image:
+    radial-gradient(85% 60% at 50% -8%, rgba(255, 226, 170, 0.16) 0%, transparent 58%),
+    radial-gradient(115% 95% at 50% 45%, transparent 28%, rgba(0, 0, 0, 0.62) 100%),
+    /* Fugen zwischen den Brettern */
+    repeating-linear-gradient(180deg, transparent 0 116px, rgba(0, 0, 0, 0.45) 116px 122px),
+    /* Maserung längs der Bretter */
+    repeating-linear-gradient(
+      180deg,
+      rgba(0, 0, 0, 0.09) 0 1px,
+      transparent 1px 5px,
+      rgba(255, 255, 255, 0.022) 5px 6px,
+      transparent 6px 13px
+    ),
+    linear-gradient(90deg, #4b3121 0%, #38230f 35%, #47311d 65%, #33200f 100%);
+}
+
+.table--beach {
+  background-color: #6d5334;
+  background-image:
+    /* Tiefstehende Abendsonne über dem Wasser */
+    radial-gradient(26% 16% at 74% 29%, rgba(255, 226, 168, 0.55) 0%, transparent 72%),
+    /* Randabdunklung – hält die helle Schrift lesbar */
+    radial-gradient(120% 100% at 50% 58%, transparent 20%, rgba(34, 18, 4, 0.62) 100%),
+    /* Gischtsaum am Horizont */
+    linear-gradient(
+      180deg,
+      transparent 0 37.6%,
+      rgba(255, 255, 255, 0.17) 37.6% 38.9%,
+      transparent 38.9% 100%
+    ),
+    /* Sandkörnung */
+    repeating-linear-gradient(58deg, rgba(255, 255, 255, 0.04) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(-58deg, rgba(0, 0, 0, 0.05) 0 1px, transparent 1px 3px),
+    /* Himmel, Meer, nasser und trockener Sand */
+    linear-gradient(
+      180deg,
+      #3d6f97 0%,
+      #35688f 16%,
+      #2b6180 27%,
+      #1d5b70 32%,
+      #175064 37.5%,
+      #8a6f45 39%,
+      #93794e 48%,
+      #7d6339 68%,
+      #4a3720 100%
+    );
+}
+
+.table--tower {
+  background-color: #0a0518;
+  /*
+   * Sternenfeld: jede Ebene trägt einen Stern und kachelt in einem anderen,
+   * teilerfremden Raster. Dadurch überlagern sich die Wiederholungen und das
+   * Muster wirkt gestreut statt gerastert.
+   */
+  background-image:
+    radial-gradient(1.7px 1.7px at 34px 52px, rgba(255, 255, 255, 0.9) 50%, transparent 51%),
+    radial-gradient(1.2px 1.2px at 128px 96px, rgba(255, 255, 255, 0.6) 50%, transparent 51%),
+    radial-gradient(1.1px 1.1px at 61px 173px, rgba(214, 190, 255, 0.75) 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 96px 44px, rgba(255, 255, 255, 0.55) 50%, transparent 51%),
+    radial-gradient(1px 1px at 88px 219px, rgba(255, 255, 255, 0.5) 50%, transparent 51%),
+    radial-gradient(1.3px 1.3px at 233px 141px, rgba(230, 215, 255, 0.6) 50%, transparent 51%),
+    radial-gradient(70% 50% at 80% 6%, rgba(168, 85, 247, 0.32) 0%, transparent 62%),
+    radial-gradient(90% 60% at 18% 100%, rgba(56, 30, 120, 0.5) 0%, transparent 64%),
+    linear-gradient(180deg, #160b32 0%, #070312 100%);
+  background-size:
+    190px 190px,
+    233px 211px,
+    311px 287px,
+    157px 179px,
+    271px 241px,
+    347px 293px,
+    auto,
+    auto,
+    auto;
+}
+
+.table--salon {
+  background-color: #1b1210;
+  background-image:
+    /* Feuerschein */
+    radial-gradient(55% 45% at 6% 100%, rgba(255, 138, 60, 0.3) 0%, transparent 58%),
+    radial-gradient(115% 95% at 50% 40%, transparent 30%, rgba(0, 0, 0, 0.6) 100%),
+    /* Ledernarbung */
+    repeating-linear-gradient(35deg, rgba(255, 255, 255, 0.016) 0 3px, transparent 3px 7px),
+    repeating-linear-gradient(-35deg, rgba(0, 0, 0, 0.05) 0 3px, transparent 3px 7px),
+    linear-gradient(160deg, #3c231b 0%, #190e0b 100%);
+}
+
+/* Vorschaukachel in der Auswahl */
+.table-swatch {
+  width: 78px;
+  height: 54px;
+  flex: none;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.45);
 }
 
 h1,
@@ -855,6 +984,7 @@ input {
 .trick-slot .player-tag {
   font-size: 0.72rem;
   color: var(--text-dim);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
   max-width: 80px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -884,6 +1014,8 @@ input {
   font-size: 0.92rem;
   min-height: 1.4em;
   max-width: 34rem;
+  /* Hält den Text auf hellen Tischen (Strand, Holz) lesbar. */
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
 }
 
 .table-hint b {
@@ -1207,6 +1339,7 @@ button.card.is-blocked {
   font-size: 0.72rem;
   color: var(--text-faint);
   text-align: center;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
 }
 
 /* ------------------------------------------------------- Kartendesigns */
@@ -1507,6 +1640,10 @@ button.card.is-blocked {
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+.look-heading {
+  margin-top: 4px;
 }
 
 .deck-option {

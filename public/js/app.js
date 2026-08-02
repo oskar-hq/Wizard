@@ -7,11 +7,12 @@
 
 import { $, joinNames, show, toast } from './dom.js';
 import { Net } from './net.js';
-import { deckStyle, lastName, session } from './store.js';
+import { deckStyle, lastName, session, tableStyle } from './store.js';
 import { renderCard } from './cards.js';
 import { renderLobby } from './lobby.js';
 import { renderVariantDocs } from './variants.js';
 import { applyDeck, renderDeckPicker } from './decks.js';
+import { applyTable, renderTablePicker } from './tables.js';
 import { renderGameOver, renderRoundOverlay, renderScoreboard, renderTable } from './table.js';
 
 const net = new Net();
@@ -286,8 +287,15 @@ function pickDeck(id) {
   render();
 }
 
+/** Spieltisch wählen: speichern und sofort anwenden. */
+function pickTable(id) {
+  tableStyle.set(applyTable(id));
+  renderTablePicker($('table-list'), tableStyle.get(), pickTable);
+}
+
 function openDeckPicker() {
   renderDeckPicker($('deck-list'), deckStyle.get(), pickDeck);
+  renderTablePicker($('table-list'), tableStyle.get(), pickTable);
   show($('overlay-decks'), true);
 }
 
@@ -339,6 +347,7 @@ document.addEventListener('visibilitychange', () => {
 
 $('input-name').value = lastName.get();
 applyDeck(deckStyle.get());
+applyTable(tableStyle.get());
 renderHeroCards();
 const saved = session.load();
 if (saved) {

@@ -55,7 +55,7 @@
           />
         </label>
         <button id="btn-join" class="button">Raum beitreten</button>
-        <button id="btn-decks-home" class="button button--ghost">Kartendesign</button>
+        <button id="btn-decks-home" class="button button--ghost">Aussehen</button>
         <button id="btn-rules-home" class="button button--ghost">Spielregeln</button>
       </div>
     </section>
@@ -127,7 +127,7 @@
         <div class="topbar-group">
           <div class="trump-slot" id="trump-slot"></div>
           <button class="icon-button" id="btn-scores" title="Punktestand">Punkte</button>
-          <button class="icon-button" id="btn-decks-game" title="Kartendesign">Design</button>
+          <button class="icon-button" id="btn-decks-game" title="Aussehen">Aussehen</button>
           <button class="icon-button" id="btn-rules-game" title="Regeln">Regeln</button>
           <button class="icon-button icon-button--danger" id="btn-abort" title="Spiel abbrechen" hidden>
             Abbrechen
@@ -194,11 +194,17 @@
 
     <div class="overlay" id="overlay-decks" hidden>
       <div class="sheet sheet--wide sheet--scroll">
-        <h2 class="sheet-title">Kartendesign</h2>
+        <h2 class="sheet-title">Aussehen</h2>
         <p class="sheet-sub">
-          Gilt nur für dich – jeder am Tisch kann ein anderes Design verwenden.
+          Gilt nur für dich – jeder am Tisch kann etwas anderes einstellen.
         </p>
+
+        <p class="eyebrow look-heading">Kartendesign</p>
         <div class="deck-list" id="deck-list"></div>
+
+        <p class="eyebrow look-heading">Spieltisch</p>
+        <div class="deck-list" id="table-list"></div>
+
         <button class="button" id="btn-close-decks">Schließen</button>
       </div>
     </div>
