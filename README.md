@@ -69,9 +69,30 @@ eigenen Browser.
 | **Zaubererturm** | Violette Nacht mit Sternenfeld |
 | **Kaminzimmer** | Dunkles Leder mit Feuerschein von unten links |
 
-Auch die Tische sind reine Farbverläufe – Filzgewebe, Holzmaserung, Ledernarbung
-und Sandkörnung entstehen aus sich wiederholenden Verläufen, das Sternenfeld aus
-sechs Ebenen mit teilerfremden Kachelmaßen. Es wird nichts nachgeladen.
+Auch die Tische sind reine Farbverläufe – es wird nichts nachgeladen. Jeder
+Tisch bringt seine eigene Szene mit:
+
+- **Casino** – Roulettekessel mit Holzrand, Kreuz und 37 Fächern, ein Setzfeld
+  aus zwölf Spalten und drei Reihen, verstreute Jetons, Filzgewebe und wolkige
+  Tuchtiefe
+- **Holz** – Bretter mit Lichtkante und Schattenfuge, Astlöcher mit
+  Jahresringen, Maserung aus vier Perioden mit leicht verkippten Winkeln, damit
+  kein Streifenmuster entsteht
+- **Strand** – Himmel, Meer mit Wellenkämmen, Gischtsaum, tiefstehende Sonne,
+  auslaufende Wellen auf nassem Sand, Muscheln und Dünenschatten
+- **Zaubererturm** – Mond mit Kratern, Nebelschwaden, Turmsilhouette und ein
+  Sternenfeld aus sieben Ebenen mit teilerfremden Kachelmaßen (gleich große
+  Kacheln ergäben ein sichtbares Raster)
+- **Kaminzimmer** – gesteppte Lederrauten mit Ziernägeln in den Kreuzungspunkten,
+  Ledernarbung und Feuerschein von unten links
+
+### Keine Leisten, kein Weichzeichner
+
+Kopfzeile und Kartenablage sind keine Balken mehr: Statt einer Leiste mit
+Trennlinie und Weichzeichner läuft nur noch ein weicher Verlauf in den Tisch
+aus. Rundenzahl, Raum-Code, Trumpfkarte und Knöpfe liegen damit sichtbar auf der
+Szene und bekommen dafür einen eigenen dunklen Grund, damit sie auf Filz, Holz
+oder Sand gleichermaßen stehen.
 
 Damit die helle Schrift überall lesbar bleibt, sind alle Tische bewusst dunkel
 gehalten; helle Motive wie Strand und Holz bekommen zusätzlich eine

@@ -83,6 +83,9 @@ body {
   color: var(--text);
   background-color: var(--bg);
   min-height: 100dvh;
+  /* Eigener Stapelkontext: die Deko-Ebenen der Tische (::before) liegen damit
+     zuverlässig hinter dem Inhalt, aber über dem Hintergrund. */
+  isolation: isolate;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   overscroll-behavior: none;
@@ -106,70 +109,235 @@ body {
     radial-gradient(90% 60% at 95% 8%, #2a1b3d 0%, transparent 55%);
 }
 
+/* ------------------------------------------------------------ Casino-Filz
+   Roulettekessel (::before) und Setzfeld (::after) liegen als eigene Ebenen
+   auf dem Filz; beide skalieren in Prozent und füllen deshalb auch die
+   Vorschaukachel. */
+
 .table--casino {
+  position: relative;
   background-color: #0c3520;
   background-image:
     /* Lichtkegel von oben */
-    radial-gradient(90% 65% at 50% -12%, rgba(255, 244, 214, 0.2) 0%, transparent 62%),
+    radial-gradient(80% 55% at 50% -10%, rgba(255, 246, 214, 0.22) 0%, transparent 62%),
     /* Randabdunklung */
-    radial-gradient(115% 95% at 50% 45%, transparent 32%, rgba(0, 0, 0, 0.58) 100%),
-    /* Filzgewebe */
-    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.016) 0 2px, transparent 2px 4px),
-    repeating-linear-gradient(-45deg, rgba(0, 0, 0, 0.035) 0 2px, transparent 2px 4px),
-    linear-gradient(180deg, #10492c 0%, #092a19 100%);
+    radial-gradient(118% 98% at 50% 48%, transparent 28%, rgba(0, 0, 0, 0.62) 100%),
+
+    /* Verstreute Jetons: heller Rand, farbige Mitte, dunkler Ring */
+    radial-gradient(15px 15px at 6% 11%, rgba(255, 255, 255, 0.92) 0 24%, #c0392b 26% 62%,
+      rgba(255, 255, 255, 0.85) 64% 78%, #8e2419 80% 96%, transparent 97%),
+    radial-gradient(13px 13px at 12% 18%, rgba(255, 255, 255, 0.9) 0 24%, #2b6ca8 26% 62%,
+      rgba(255, 255, 255, 0.78) 64% 78%, #1a4569 80% 96%, transparent 97%),
+    radial-gradient(14px 14px at 9% 25%, rgba(255, 255, 255, 0.9) 0 24%, #2f7d4f 26% 62%,
+      rgba(255, 255, 255, 0.78) 64% 78%, #1c5133 80% 96%, transparent 97%),
+    radial-gradient(15px 15px at 93% 10%, rgba(255, 255, 255, 0.9) 0 24%, #d4a017 26% 62%,
+      rgba(255, 255, 255, 0.82) 64% 78%, #8f6c0d 80% 96%, transparent 97%),
+    radial-gradient(13px 13px at 88% 16%, rgba(255, 255, 255, 0.88) 0 24%, #7b4397 26% 62%,
+      rgba(255, 255, 255, 0.72) 64% 78%, #4d2860 80% 96%, transparent 97%),
+    radial-gradient(14px 14px at 6% 90%, rgba(255, 255, 255, 0.9) 0 24%, #2f7d4f 26% 62%,
+      rgba(255, 255, 255, 0.78) 64% 78%, #1c5133 80% 96%, transparent 97%),
+    radial-gradient(13px 13px at 11% 95%, rgba(255, 255, 255, 0.88) 0 24%, #1f2933 26% 62%,
+      rgba(255, 255, 255, 0.66) 64% 78%, #0b1116 80% 96%, transparent 97%),
+    radial-gradient(15px 15px at 94% 89%, rgba(255, 255, 255, 0.9) 0 24%, #c0392b 26% 62%,
+      rgba(255, 255, 255, 0.8) 64% 78%, #8e2419 80% 96%, transparent 97%),
+    radial-gradient(13px 13px at 89% 95%, rgba(255, 255, 255, 0.88) 0 24%, #d4a017 26% 62%,
+      rgba(255, 255, 255, 0.75) 64% 78%, #8f6c0d 80% 96%, transparent 97%),
+
+    /* Filzgewebe in zwei Richtungen */
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.018) 0 2px, transparent 2px 4px),
+    repeating-linear-gradient(-45deg, rgba(0, 0, 0, 0.04) 0 2px, transparent 2px 4px),
+    /* Wolkige Farbtiefe des Tuchs */
+    radial-gradient(38% 30% at 22% 68%, rgba(255, 255, 255, 0.035) 0%, transparent 70%),
+    radial-gradient(32% 26% at 78% 32%, rgba(0, 0, 0, 0.09) 0%, transparent 70%),
+    linear-gradient(180deg, #11542f 0%, #0a2e19 100%);
 }
 
-.table--wood {
-  background-color: #3a2415;
+/* Roulettekessel. Die Ebenen liegen von oben nach unten: Nabe, Kreuz,
+   Kesselboden, Holzrand, Zahlenkranz – der Rand muss über dem Kranz liegen,
+   sonst laufen die Fächer bis zur Außenkante. */
+.table--casino::before {
+  content: '';
+  position: absolute;
+  left: 4%;
+  top: 50%;
+  width: min(25%, 38vh);
+  aspect-ratio: 1;
+  transform: translateY(-50%);
+  border-radius: 50%;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.44;
   background-image:
-    radial-gradient(85% 60% at 50% -8%, rgba(255, 226, 170, 0.16) 0%, transparent 58%),
-    radial-gradient(115% 95% at 50% 45%, transparent 28%, rgba(0, 0, 0, 0.62) 100%),
-    /* Fugen zwischen den Brettern */
-    repeating-linear-gradient(180deg, transparent 0 116px, rgba(0, 0, 0, 0.45) 116px 122px),
-    /* Maserung längs der Bretter */
+    radial-gradient(circle at 50% 50%, #e3c98d 0 6%, #8a6a33 6% 9%, transparent 9%),
+    repeating-conic-gradient(
+      from 45deg,
+      rgba(227, 201, 141, 0.85) 0deg 1.6deg,
+      transparent 1.6deg 90deg
+    ),
+    radial-gradient(circle at 50% 50%, #241505 0 27%, transparent 27%),
+    radial-gradient(circle at 50% 50%, transparent 0 66%, #7a4c26 66% 82%, #5b3719 82% 100%),
+    repeating-conic-gradient(from 0deg, #b3282a 0deg 4.865deg, #14161b 4.865deg 9.73deg);
+  box-shadow:
+    inset 0 0 0 2px rgba(0, 0, 0, 0.45),
+    inset 0 8px 24px rgba(0, 0, 0, 0.5),
+    0 14px 44px rgba(0, 0, 0, 0.5);
+}
+
+/* Setzfeld rechts: zwölf Spalten, drei Reihen, jede zweite Spalte rot. */
+.table--casino::after {
+  content: '';
+  position: absolute;
+  right: 4%;
+  top: 50%;
+  width: 42%;
+  height: 23%;
+  transform: translateY(-50%);
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.32;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  border-radius: 3px;
+  background-color: rgba(18, 20, 25, 0.5);
+  background-image:
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.5) 0 1.5px, transparent 1.5px 8.3333%),
+    repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.5) 0 1.5px, transparent 1.5px 33.3333%),
     repeating-linear-gradient(
-      180deg,
-      rgba(0, 0, 0, 0.09) 0 1px,
-      transparent 1px 5px,
-      rgba(255, 255, 255, 0.022) 5px 6px,
-      transparent 6px 13px
-    ),
-    linear-gradient(90deg, #4b3121 0%, #38230f 35%, #47311d 65%, #33200f 100%);
-}
-
-.table--beach {
-  background-color: #6d5334;
-  background-image:
-    /* Tiefstehende Abendsonne über dem Wasser */
-    radial-gradient(26% 16% at 74% 29%, rgba(255, 226, 168, 0.55) 0%, transparent 72%),
-    /* Randabdunklung – hält die helle Schrift lesbar */
-    radial-gradient(120% 100% at 50% 58%, transparent 20%, rgba(34, 18, 4, 0.62) 100%),
-    /* Gischtsaum am Horizont */
-    linear-gradient(
-      180deg,
-      transparent 0 37.6%,
-      rgba(255, 255, 255, 0.17) 37.6% 38.9%,
-      transparent 38.9% 100%
-    ),
-    /* Sandkörnung */
-    repeating-linear-gradient(58deg, rgba(255, 255, 255, 0.04) 0 1px, transparent 1px 3px),
-    repeating-linear-gradient(-58deg, rgba(0, 0, 0, 0.05) 0 1px, transparent 1px 3px),
-    /* Himmel, Meer, nasser und trockener Sand */
-    linear-gradient(
-      180deg,
-      #3d6f97 0%,
-      #35688f 16%,
-      #2b6180 27%,
-      #1d5b70 32%,
-      #175064 37.5%,
-      #8a6f45 39%,
-      #93794e 48%,
-      #7d6339 68%,
-      #4a3720 100%
+      90deg,
+      rgba(179, 40, 42, 0.6) 0 8.3333%,
+      transparent 8.3333% 16.6666%
     );
 }
 
+/* -------------------------------------------------------- Alter Holztisch */
+
+.table--wood {
+  background-color: #462d16;
+  background-image:
+    /* Licht von oben */
+    radial-gradient(80% 55% at 50% -10%, rgba(255, 228, 172, 0.18) 0%, transparent 60%),
+    /* Randabdunklung */
+    radial-gradient(120% 100% at 50% 46%, transparent 26%, rgba(18, 9, 2, 0.62) 100%),
+
+    /* Astlöcher mit Jahresringen */
+    radial-gradient(34px 20px at 13% 17%, #1d0e04 0 16%, #35190a 18% 30%,
+      rgba(58, 30, 12, 0.75) 32% 46%, rgba(96, 60, 26, 0.4) 48% 66%,
+      rgba(120, 78, 36, 0.2) 68% 84%, transparent 86%),
+    radial-gradient(24px 14px at 62% 39%, #1d0e04 0 20%, #35190a 22% 36%,
+      rgba(58, 30, 12, 0.7) 38% 54%, rgba(96, 60, 26, 0.34) 56% 74%, transparent 78%),
+    radial-gradient(40px 23px at 85% 71%, #1d0e04 0 14%, #35190a 16% 28%,
+      rgba(58, 30, 12, 0.7) 30% 46%, rgba(96, 60, 26, 0.36) 48% 68%,
+      rgba(120, 78, 36, 0.18) 70% 86%, transparent 88%),
+    radial-gradient(21px 12px at 33% 84%, #1d0e04 0 22%, #35190a 24% 40%,
+      rgba(58, 30, 12, 0.65) 42% 60%, rgba(96, 60, 26, 0.3) 62% 80%, transparent 84%),
+    radial-gradient(28px 16px at 74% 9%, #1d0e04 0 18%, #35190a 20% 34%,
+      rgba(58, 30, 12, 0.65) 36% 52%, rgba(96, 60, 26, 0.3) 54% 74%, transparent 78%),
+    radial-gradient(19px 11px at 24% 57%, #1d0e04 0 24%, #35190a 26% 42%,
+      rgba(58, 30, 12, 0.6) 44% 62%, rgba(96, 60, 26, 0.26) 64% 82%, transparent 86%),
+    radial-gradient(23px 13px at 47% 27%, #1d0e04 0 20%, #35190a 22% 38%,
+      rgba(58, 30, 12, 0.6) 40% 58%, rgba(96, 60, 26, 0.26) 60% 80%, transparent 84%),
+    radial-gradient(17px 10px at 92% 34%, #1d0e04 0 24%, #35190a 26% 44%,
+      rgba(58, 30, 12, 0.55) 46% 64%, transparent 70%),
+
+    /* Maserung: drei Perioden, leicht verkippt – ergibt ein unregelmäßiges Bild */
+    repeating-linear-gradient(179.5deg, rgba(0, 0, 0, 0.11) 0 1px, transparent 1px 7px),
+    repeating-linear-gradient(180.5deg, rgba(255, 233, 190, 0.05) 0 1px, transparent 1px 11px),
+    repeating-linear-gradient(180deg, rgba(0, 0, 0, 0.07) 0 2px, transparent 2px 17px),
+    repeating-linear-gradient(179.7deg, rgba(0, 0, 0, 0.05) 0 1px, transparent 1px 29px),
+
+    /* Fugen: Lichtkante oben, Schatten unten */
+    repeating-linear-gradient(
+      180deg,
+      transparent 0 108px,
+      rgba(255, 226, 176, 0.09) 108px 110px,
+      rgba(0, 0, 0, 0.55) 110px 115px,
+      rgba(0, 0, 0, 0.18) 115px 118px,
+      transparent 118px 124px
+    ),
+    /* Brett für Brett ein anderer Ton */
+    repeating-linear-gradient(
+      180deg,
+      rgba(255, 196, 130, 0.055) 0 124px,
+      rgba(0, 0, 0, 0.06) 124px 248px,
+      rgba(255, 196, 130, 0.025) 248px 372px,
+      rgba(0, 0, 0, 0.03) 372px 496px
+    ),
+    linear-gradient(90deg, #573a1e 0%, #40270f 28%, #513418 52%, #3b2410 78%, #4d301500 100%),
+    linear-gradient(180deg, #4e3218 0%, #3a2310 100%);
+}
+
+/* -------------------------------------------------------------- Strand */
+
+.table--beach {
+  position: relative;
+  background-color: #6d5334;
+  background-image:
+    /* Randabdunklung – hält die helle Schrift lesbar */
+    radial-gradient(120% 100% at 50% 58%, transparent 20%, rgba(34, 18, 4, 0.6) 100%),
+
+    /* Muscheln und Kiesel im Sand */
+    radial-gradient(7px 5px at 12% 78%, rgba(255, 246, 226, 0.5) 0 55%, transparent 58%),
+    radial-gradient(5px 4px at 86% 66%, rgba(255, 240, 214, 0.42) 0 55%, transparent 58%),
+    radial-gradient(6px 4px at 28% 92%, rgba(60, 40, 18, 0.4) 0 55%, transparent 58%),
+    radial-gradient(4px 3px at 68% 86%, rgba(255, 244, 220, 0.38) 0 55%, transparent 58%),
+
+    /* Auslaufende Wellen auf dem nassen Sand */
+    radial-gradient(60% 3% at 40% 44%, rgba(255, 255, 255, 0.16) 0 60%, transparent 70%),
+    radial-gradient(48% 2.4% at 62% 48%, rgba(255, 255, 255, 0.11) 0 60%, transparent 70%),
+
+    /* Gischtsaum am Horizont */
+    linear-gradient(180deg, transparent 0 37.4%,
+      rgba(255, 255, 255, 0.22) 37.4% 38.6%, transparent 38.6% 100%),
+    /* Wellenkämme auf dem Wasser */
+    repeating-linear-gradient(180deg,
+      transparent 0 6px, rgba(255, 255, 255, 0.055) 6px 7px, transparent 7px 13px),
+
+    /* Sandkörnung */
+    repeating-linear-gradient(58deg, rgba(255, 255, 255, 0.045) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(-58deg, rgba(0, 0, 0, 0.055) 0 1px, transparent 1px 3px),
+    /* Dünenschatten */
+    radial-gradient(45% 18% at 20% 72%, rgba(0, 0, 0, 0.1) 0%, transparent 70%),
+    radial-gradient(38% 14% at 82% 84%, rgba(0, 0, 0, 0.09) 0%, transparent 70%),
+
+    /* Himmel, Meer, nasser und trockener Sand */
+    linear-gradient(180deg,
+      #3d6f97 0%, #35688f 16%, #2b6180 27%, #1d5b70 32%, #175064 37.4%,
+      #8a6f45 39%, #93794e 48%, #7d6339 68%, #4a3720 100%);
+  background-size:
+    auto, auto, auto, auto, auto, auto, auto, auto,
+    100% 37.4%,
+    auto, auto, auto, auto, auto;
+  background-repeat:
+    repeat, repeat, repeat, repeat, repeat, repeat, repeat, repeat,
+    no-repeat,
+    repeat, repeat, repeat, repeat, repeat;
+}
+
+/* Abendsonne über dem Wasser */
+.table--beach::before {
+  content: '';
+  position: absolute;
+  left: 68%;
+  top: 30%;
+  width: min(9%, 14vh);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(
+    circle at 50% 50%,
+    rgba(255, 252, 240, 0.96) 0%,
+    rgba(255, 244, 214, 0.9) 24%,
+    rgba(255, 216, 158, 0.6) 46%,
+    rgba(255, 198, 130, 0.24) 70%,
+    rgba(255, 190, 120, 0) 100%
+  );
+  box-shadow: 0 0 120px 60px rgba(255, 206, 140, 0.22);
+}
+
+/* ------------------------------------------------------- Zaubererturm */
+
 .table--tower {
+  position: relative;
   background-color: #0a0518;
   /*
    * Sternenfeld: jede Ebene trägt einen Stern und kachelt in einem anderen,
@@ -183,35 +351,78 @@ body {
     radial-gradient(1.5px 1.5px at 96px 44px, rgba(255, 255, 255, 0.55) 50%, transparent 51%),
     radial-gradient(1px 1px at 88px 219px, rgba(255, 255, 255, 0.5) 50%, transparent 51%),
     radial-gradient(1.3px 1.3px at 233px 141px, rgba(230, 215, 255, 0.6) 50%, transparent 51%),
-    radial-gradient(70% 50% at 80% 6%, rgba(168, 85, 247, 0.32) 0%, transparent 62%),
+    radial-gradient(0.9px 0.9px at 41px 118px, rgba(255, 255, 255, 0.4) 50%, transparent 51%),
+    /* Nebelschwaden */
+    radial-gradient(52% 34% at 76% 22%, rgba(168, 85, 247, 0.26) 0%, transparent 68%),
+    radial-gradient(44% 30% at 22% 12%, rgba(88, 60, 200, 0.2) 0%, transparent 70%),
     radial-gradient(90% 60% at 18% 100%, rgba(56, 30, 120, 0.5) 0%, transparent 64%),
-    linear-gradient(180deg, #160b32 0%, #070312 100%);
+    /* Turmsilhouette am unteren Rand */
+    linear-gradient(180deg, transparent 0 78%, rgba(4, 2, 12, 0.85) 84% 100%),
+    linear-gradient(180deg, #180c36 0%, #0a0520 55%, #060210 100%);
   background-size:
-    190px 190px,
-    233px 211px,
-    311px 287px,
-    157px 179px,
-    271px 241px,
-    347px 293px,
-    auto,
-    auto,
-    auto;
+    190px 190px, 233px 211px, 311px 287px, 157px 179px, 271px 241px, 347px 293px,
+    197px 263px,
+    auto, auto, auto, auto, auto;
 }
+
+/* Mond mit Kratern */
+.table--tower::before {
+  content: '';
+  position: absolute;
+  right: 12%;
+  top: 14%;
+  width: min(8%, 13vh);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    radial-gradient(18% 18% at 38% 34%, rgba(150, 140, 180, 0.55) 0 60%, transparent 62%),
+    radial-gradient(12% 12% at 62% 58%, rgba(150, 140, 180, 0.45) 0 60%, transparent 62%),
+    radial-gradient(9% 9% at 46% 72%, rgba(150, 140, 180, 0.4) 0 60%, transparent 62%),
+    radial-gradient(circle at 38% 32%, #f3eeff 0%, #cfc4ea 55%, #9d92c2 100%);
+  box-shadow: 0 0 60px 22px rgba(190, 170, 255, 0.22);
+}
+
+/* --------------------------------------------------------- Kaminzimmer */
 
 .table--salon {
   background-color: #1b1210;
   background-image:
-    /* Feuerschein */
-    radial-gradient(55% 45% at 6% 100%, rgba(255, 138, 60, 0.3) 0%, transparent 58%),
-    radial-gradient(115% 95% at 50% 40%, transparent 30%, rgba(0, 0, 0, 0.6) 100%),
+    /* Feuerschein von unten links */
+    radial-gradient(52% 42% at 5% 100%, rgba(255, 146, 62, 0.34) 0%, transparent 60%),
+    radial-gradient(28% 22% at 8% 96%, rgba(255, 196, 110, 0.22) 0%, transparent 66%),
+    radial-gradient(118% 96% at 55% 40%, transparent 28%, rgba(0, 0, 0, 0.62) 100%),
+
+    /*
+     * Steppung und Ziernägel stecken in derselben Kachel: eine 96er-Kachel
+     * mit zwei Diagonalen durch die Mitte ergibt beim Wiederholen ein
+     * durchgehendes Rautennetz – und der Nagel sitzt genau im Kreuzungspunkt.
+     */
+    radial-gradient(4px 4px at 50% 50%, rgba(232, 204, 148, 0.55) 0 42%,
+      rgba(120, 88, 42, 0.5) 46% 62%, transparent 66%),
+    radial-gradient(26px 26px at 50% 50%, rgba(0, 0, 0, 0.22) 0 40%, transparent 72%),
+    linear-gradient(45deg, transparent 49.4%, rgba(0, 0, 0, 0.3) 49.4% 50.6%, transparent 50.6%),
+    linear-gradient(-45deg, transparent 49.4%, rgba(0, 0, 0, 0.3) 49.4% 50.6%, transparent 50.6%),
+    linear-gradient(45deg, transparent 48%, rgba(255, 218, 172, 0.06) 48% 49.2%, transparent 49.2%),
+    linear-gradient(-45deg, transparent 48%, rgba(255, 218, 172, 0.06) 48% 49.2%, transparent 49.2%),
     /* Ledernarbung */
-    repeating-linear-gradient(35deg, rgba(255, 255, 255, 0.016) 0 3px, transparent 3px 7px),
-    repeating-linear-gradient(-35deg, rgba(0, 0, 0, 0.05) 0 3px, transparent 3px 7px),
-    linear-gradient(160deg, #3c231b 0%, #190e0b 100%);
+    repeating-linear-gradient(35deg, rgba(255, 255, 255, 0.018) 0 3px, transparent 3px 7px),
+    repeating-linear-gradient(-35deg, rgba(0, 0, 0, 0.055) 0 3px, transparent 3px 7px),
+    /* Wolkige Tiefe */
+    radial-gradient(40% 32% at 70% 30%, rgba(255, 170, 110, 0.07) 0%, transparent 70%),
+    linear-gradient(160deg, #452a20 0%, #2a1712 45%, #170d0a 100%);
+  background-size:
+    auto, auto, auto,
+    96px 96px, 96px 96px, 96px 96px, 96px 96px, 96px 96px, 96px 96px,
+    auto, auto, auto, auto;
 }
 
 /* Vorschaukachel in der Auswahl */
 .table-swatch {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
   width: 78px;
   height: 54px;
   flex: none;
@@ -773,15 +984,19 @@ input {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 10px 14px;
-  /* Über den Dialogen: Punkte, Regeln, Design und „Abbrechen“ bleiben immer
+  padding: 10px 14px 20px;
+  /* Über den Dialogen: Punkte, Regeln, Aussehen und „Abbrechen“ bleiben immer
      erreichbar – auch während der Ansage. */
   position: relative;
   z-index: 60;
-  border-bottom: 1px solid var(--border);
-  background: rgba(10, 12, 18, 0.6);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  /* Kein Balken und kein Weichzeichner: ein weicher Verlauf läuft in den Tisch
+     aus, damit die Angaben auf der Szene liegen statt auf einer Leiste. */
+  background-image: linear-gradient(
+    180deg,
+    rgba(6, 9, 14, 0.72) 0%,
+    rgba(6, 9, 14, 0.42) 55%,
+    transparent 100%
+  );
   flex: none;
 }
 
@@ -812,21 +1027,23 @@ input {
   font-weight: 600;
   padding: 6px 11px;
   border-radius: 999px;
-  background: var(--surface-strong);
+  background: rgba(9, 13, 21, 0.58);
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
   white-space: nowrap;
 }
 
 .pill--muted {
   color: var(--text-dim);
-  background: var(--surface);
   letter-spacing: 0.12em;
 }
 
 .icon-button {
   padding: 6px 11px;
   border-radius: 999px;
-  border: 1px solid var(--border);
-  background: var(--surface);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(9, 13, 21, 0.58);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
   font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
@@ -843,6 +1060,7 @@ input {
   gap: 7px;
   font-size: 0.75rem;
   color: var(--text-dim);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
 }
 
 .trump-slot .card {
@@ -881,8 +1099,9 @@ input {
   min-width: 118px;
   padding: 9px 12px;
   border-radius: var(--radius-md);
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: rgba(9, 13, 21, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  box-shadow: 0 3px 14px rgba(0, 0, 0, 0.35);
   display: flex;
   flex-direction: column;
   gap: 3px;
@@ -1026,11 +1245,13 @@ input {
 
 .hand-dock {
   flex: none;
-  padding: 10px 14px calc(14px + var(--safe-b));
-  border-top: 1px solid var(--border);
-  background: rgba(10, 12, 18, 0.6);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  padding: 26px 14px calc(14px + var(--safe-b));
+  background-image: linear-gradient(
+    0deg,
+    rgba(6, 9, 14, 0.78) 0%,
+    rgba(6, 9, 14, 0.5) 55%,
+    transparent 100%
+  );
 }
 
 .hand-label {
@@ -1039,6 +1260,7 @@ input {
   letter-spacing: 0.06em;
   text-transform: uppercase;
   margin-bottom: 8px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
 }
 
 .hand {
@@ -1736,8 +1958,12 @@ button.card.is-blocked {
 body.hand-above-dialog .hand-dock {
   position: relative;
   z-index: 60;
-  border-top-color: rgba(108, 140, 255, 0.55);
-  box-shadow: 0 -12px 30px rgba(0, 0, 0, 0.45);
+  background-image: linear-gradient(
+    0deg,
+    rgba(6, 9, 14, 0.9) 0%,
+    rgba(10, 16, 34, 0.66) 55%,
+    rgba(108, 140, 255, 0.1) 100%
+  );
 }
 
 /* --------------------------------------------------------------- Sheets */
