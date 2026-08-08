@@ -1,5 +1,5 @@
 /**
- * Kartendeck für Wizard (60 Karten).
+ * Kartendeck für das Zauberspiel (60 Karten).
  *
  * 4 Farben à 13 Werte (52) + 4 Zauberer + 4 Narren.
  *

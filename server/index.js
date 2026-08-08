@@ -1,5 +1,5 @@
 /**
- * Wizard Online – Serverstart.
+ * Zauberspiel – Serverstart.
  *
  * Express liefert das statische Frontend aus `public/`, `ws` hängt auf
  * demselben HTTP-Server unter `/ws`. Dadurch läuft alles über einen einzigen
@@ -16,7 +16,7 @@ const { server, wss, close } = createServer({
 });
 
 server.listen(PORT, HOST, () => {
-  console.log(`Wizard Online läuft auf http://${HOST}:${PORT} (WebSocket: /ws)`);
+  console.log(`Zauberspiel läuft auf http://${HOST}:${PORT} (WebSocket: /ws)`);
 });
 
 let shuttingDown = false;

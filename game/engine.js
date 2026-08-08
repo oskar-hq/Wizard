@@ -1,5 +1,5 @@
 /**
- * Wizard – Spiel-Engine (autoritativ, ohne Netzwerk).
+ * Zauberspiel – Spiel-Engine (autoritativ, ohne Netzwerk).
  *
  * Die Engine kennt keine Sockets und keine Räume. Sie hält den kompletten
  * Spielzustand und akzeptiert nur regelkonforme Züge; alles andere wirft
@@ -58,7 +58,7 @@ export class WizardGame {
     if (playerIds.length < MIN_PLAYERS || playerIds.length > MAX_PLAYERS) {
       throw new GameError(
         'invalid_players',
-        `Wizard braucht ${MIN_PLAYERS} bis ${MAX_PLAYERS} Spieler.`,
+        `Das Zauberspiel braucht ${MIN_PLAYERS} bis ${MAX_PLAYERS} Spieler.`,
       );
     }
     if (new Set(playerIds).size !== playerIds.length) {

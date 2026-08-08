@@ -1,5 +1,5 @@
 /**
- * Reine Regelfunktionen für Wizard – ohne Zustand, ohne Netzwerk.
+ * Reine Regelfunktionen für das Zauberspiel – ohne Zustand, ohne Netzwerk.
  *
  * Ein "Stich" (trick) ist hier immer ein Array in Spielreihenfolge:
  *   [{ playerId: string, card: Card }, ...]

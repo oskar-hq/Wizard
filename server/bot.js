@@ -43,7 +43,7 @@ function winChance(card, trumpSuit) {
 
 /**
  * Ansage: die erwarteten Stiche der eigenen Hand, leicht zurückhaltend
- * gerundet – zu hohe Ansagen kosten in Wizard mehr als zu tiefe.
+ * gerundet – zu hohe Ansagen kosten hier mehr als zu tiefe.
  */
 export function botBid({ hand, round, trumpSuit, forbidden = null, random = Math.random }) {
   const expected = hand.reduce((sum, card) => sum + winChance(card, trumpSuit), 0);

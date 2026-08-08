@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-# Wizard Online – schlankes Image ohne Build-Step.
+# Zauberspiel – schlankes Image ohne Build-Step.
 # Das Frontend ist reines HTML/CSS/JS und wird direkt ausgeliefert.
 
 FROM node:22-alpine AS deps

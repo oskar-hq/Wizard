@@ -1,12 +1,34 @@
-# Wizard Online
+# Zauberspiel
 
-Selbstgehostete Online-Version des Stichspiels **Wizard** für 3 bis 6 Spieler –
+Selbstgehostetes Online-Stichspiel mit Ansage für 3 bis 6 Spieler –
 deutschsprachig, ohne Build-Step, als einzelner Docker-Container betreibbar und
 über einen Cloudflare Tunnel mit Freunden spielbar.
 
-> Eigenständige Umsetzung der Spielregeln mit selbst gezeichneten Karten
-> (CSS/SVG). Es werden keine Illustrationen oder Grafiken des Originalverlags
-> verwendet.
+Gespielt wird mit 60 Karten in vier Farben, dazu **Zauberer** und **Narren**:
+Vor jeder Runde sagt jeder an, wie viele Stiche er holen wird – und wird dafür
+belohnt oder bestraft, dass er sich selbst richtig einschätzt.
+
+> Eigenständige Umsetzung eines klassischen Ansage-Stichspiels. Alle Karten und
+> Spieltische sind selbst gezeichnet (CSS/SVG); es werden keine Illustrationen,
+> Grafiken oder Namen eines Verlags verwendet.
+
+## Zum Namen
+
+Das Projekt heißt **Zauberspiel**. Nach außen – Seitentitel, Startseite,
+Fehlermeldungen, Log – taucht ausschließlich dieser Name auf.
+
+Technische Bezeichner tragen bewusst weiterhin ihre alten Namen, damit
+bestehende Installationen unverändert weiterlaufen:
+
+- Umgebungsvariablen `WIZARD_TRICK_MS`, `WIZARD_ROUND_MS`, `WIZARD_BOT_MS`
+- Docker-Image und Container `wizard-online` (per `IMAGE_NAME` /
+  `CONTAINER_NAME` frei überschreibbar)
+- `localStorage`-Schlüssel im Browser (`wizard.session`, `wizard.deck`, …) –
+  ein Umbenennen würde alle Spieler ausloggen und ihre Design-Auswahl zurücksetzen
+
+Der Kartentyp `wizard` in Karten-IDs wie `wizard-1` ist Teil des
+WebSocket-Protokolls und bleibt ebenfalls unverändert; im Spiel heißt diese
+Karte für den Spieler **Zauberer**.
 
 ## Kartengestaltung
 
@@ -30,7 +52,7 @@ Silhouette, Zierrahmen, Runenzeichen und prominente Eckzahlen – ist aber eine
 vollständig eigene Umsetzung. Jede Karte besteht aus einem CSS-Himmelsverlauf
 und selbst gesetzten SVG-Formen:
 
-- **Blau/Menschen** – Steinkreis unter Mondlicht (Gruß an die Rahmengeschichte)
+- **Blau/Menschen** – Steinkreis unter Mondlicht
 - **Rot/Zwerge** – glühende Vulkankämme
 - **Grün/Elfen** – Nadelwald in Dämmerung
 - **Gelb/Riesen** – Bergmassiv vor tiefstehender Sonne
@@ -38,7 +60,8 @@ und selbst gesetzten SVG-Formen:
   *der Fürst*, *der Zauberer*, *der Narr*
 - **Rückseite** – achtstrahliger Stern im Goldmedaillon
 
-Illustrationen des Originalspiels werden weder verwendet noch nachgezeichnet.
+Illustrationen kommerzieller Kartenspiele werden weder verwendet noch
+nachgezeichnet – jede Form ist hier selbst gesetzt.
 
 Der Aufbau der Karten ist in den übrigen Designs gleich:
 
@@ -205,6 +228,9 @@ docker run -d --name wizard-online --restart unless-stopped \
 | `WIZARD_ROUND_MS`  | `15000`   | Wie lange die Rundenwertung ohne Klick stehen bleibt  |
 | `WIZARD_BOT_MS`    | `900`     | Bedenkzeit eines Bots je Zug (ms)                     |
 
+Das Präfix `WIZARD_` ist historisch und bleibt bewusst erhalten, damit
+bestehende `.env`- und Compose-Dateien nach der Umbenennung weiter funktionieren.
+
 Gesundheitscheck: `GET /healthz` → `{"ok":true,"rooms":N,"uptime":S}`
 
 Der Spielzustand liegt komplett im Arbeitsspeicher. Ein Neustart des Containers
@@ -223,12 +249,12 @@ HTTP und WebSocket über denselben Hostnamen und Port laufen.
 1. **Zero Trust → Networks → Tunnels** → deinen Tunnel wählen → **Configure**.
 2. Reiter **Public Hostname** → **Add a public hostname**.
 3. Eintragen:
-   - **Subdomain:** z. B. `wizard`
+   - **Subdomain:** z. B. `zauberspiel`
    - **Domain:** deine Domain, z. B. `example.com`
    - **Type:** `HTTP`
    - **URL:** `localhost:3000` (bzw. dein `PORT`)
 4. Speichern. Nach wenigen Sekunden ist das Spiel unter
-   `https://wizard.example.com` erreichbar.
+   `https://zauberspiel.example.com` erreichbar.
 
 > Läuft `cloudflared` **nicht** auf demselben Host wie der Container (z. B.
 > `cloudflared` in einem eigenen LXC/VM auf Proxmox), dann statt `localhost` die
@@ -243,7 +269,7 @@ tunnel: <TUNNEL-ID>
 credentials-file: /etc/cloudflared/<TUNNEL-ID>.json
 
 ingress:
-  - hostname: wizard.example.com
+  - hostname: zauberspiel.example.com
     service: http://localhost:3000
   - service: http_status:404
 ```
@@ -251,18 +277,18 @@ ingress:
 Danach:
 
 ```bash
-cloudflared tunnel route dns <TUNNEL-ID> wizard.example.com
+cloudflared tunnel route dns <TUNNEL-ID> zauberspiel.example.com
 sudo systemctl restart cloudflared
 ```
 
 ### Kurz testen
 
 ```bash
-curl -s https://wizard.example.com/healthz
+curl -s https://zauberspiel.example.com/healthz
 ```
 
 Wenn das `{"ok":true,…}` liefert, funktioniert auch der WebSocket – er läuft
-über denselben Hostnamen (`wss://wizard.example.com/ws`).
+über denselben Hostnamen (`wss://zauberspiel.example.com/ws`).
 
 ---
 
@@ -294,7 +320,7 @@ curl -s localhost:3001/healthz     # → {"ok":true,...}
 ```
 
 Im Cloudflare Tunnel einen **zweiten** Public Hostname anlegen, z. B.
-`wizard-test.example.com` → `http://localhost:3001`. Damit lässt sich die neue
+`zauberspiel-test.example.com` → `http://localhost:3001`. Damit lässt sich die neue
 Version in Ruhe ausprobieren, während unter der alten Adresse weitergespielt
 werden kann.
 
@@ -550,6 +576,9 @@ Alle Nachrichten sind JSON-Objekte mit einem `type`-Feld.
 ## Lizenz
 
 Code: MIT. Die mitgelieferte Schriftart **Space Grotesk** steht unter der
-SIL Open Font License 1.1. „Wizard“ ist ein Spiel von Ken Fisher, erschienen bei
-Amigo – dieses Projekt ist eine private, nicht-kommerzielle Eigenumsetzung der
-Regeln ohne Verlagsmaterial.
+SIL Open Font License 1.1.
+
+Spielregeln als solche sind nicht urheberrechtlich geschützt. Dieses Projekt ist
+eine private, nicht-kommerzielle Eigenumsetzung eines Ansage-Stichspiels: eigener
+Name, eigener Code, eigene Grafik. Es enthält weder Illustrationen noch Texte,
+Logos oder Marken eines Verlags und steht mit keinem in Verbindung.

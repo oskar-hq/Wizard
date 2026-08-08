@@ -739,5 +739,5 @@ test('Statische Auslieferung und /healthz funktionieren', async (t) => {
   const page = await fetch(httpUrl);
   assert.equal(page.status, 200);
   const html = await page.text();
-  assert.match(html, /<title>.*Wizard/i);
+  assert.match(html, /<title>.*Zauberspiel/i);
 });

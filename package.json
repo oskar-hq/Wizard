@@ -1,7 +1,7 @@
 {
-  "name": "wizard-online",
+  "name": "zauberspiel",
   "version": "1.0.0",
-  "description": "Selbstgehostete Online-Multiplayer-Version des Kartenspiels Wizard",
+  "description": "Selbstgehostete Online-Multiplayer-Version des Stichspiels Zauberspiel",
   "type": "module",
   "main": "server/index.js",
   "engines": {
